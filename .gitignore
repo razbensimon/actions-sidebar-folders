@@ -12,6 +12,7 @@ pnpm-debug.log*
 *.swp
 .idea/
 .vscode/
+.cursor/
 
 # Chrome packaging artifacts
 *.crx

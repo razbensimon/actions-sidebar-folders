@@ -25,7 +25,8 @@ pnpm release:zip   # test + write dist/actions-sidebar-folders-<version>.zip
 ```
 
 Listing copy, privacy URL, permission justifications, and screenshot checklist: **[STORE.md](./STORE.md)**.  
-Privacy policy: **[PRIVACY.md](./PRIVACY.md)**.
+Privacy policy: **[PRIVACY.md](./PRIVACY.md)**.  
+Security reports: **[SECURITY.md](./SECURITY.md)**.
 
 ## Settings
 
