@@ -15,6 +15,8 @@
     label: ".ActionListItem-label",
   };
 
+  const MAX_PARTIAL_PAGES = 50;
+
   function parseRepoFromLocation(pathname = location.pathname) {
     const parts = String(pathname).split("/").filter(Boolean);
     if (parts.length < 2) return null;
@@ -23,24 +25,35 @@
   }
 
   function isDisabledElement(li) {
-    const labels = li.querySelectorAll(".Label, span[class*='Label']");
-    for (const el of labels) {
+    // GitHub renders: <span class="ActionListItem-visual--trailing"><span class="color-fg-muted text-small">Disabled</span>
+    const trailing = li.querySelectorAll(
+      ".ActionListItem-visual--trailing, .ActionListItem-description, .Label, .color-fg-muted"
+    );
+    for (const el of trailing) {
       if (/^\s*Disabled\s*$/i.test(el.textContent || "")) return true;
     }
-    const labelled = li.querySelector("[aria-label]");
-    if (
-      labelled &&
-      /disabled/i.test(labelled.getAttribute("aria-label") || "")
-    ) {
-      return true;
+    // Exact leaf text (avoids matching the whole row "Name Disabled")
+    for (const el of li.querySelectorAll("span")) {
+      if (
+        el.children.length === 0 &&
+        /^\s*Disabled\s*$/i.test(el.textContent || "")
+      ) {
+        return true;
+      }
     }
+    if (li.getAttribute("data-asf-disabled") === "1") return true;
     return false;
   }
 
   function parseWorkflowElement(li) {
     const anchor = li.querySelector("a.ActionListContent, a[href*='/actions/']");
     const label = li.querySelector(SELECTORS.label);
-    const name = (label?.textContent || "").trim();
+    // Prefer original slash path we stash when rendering (leaf labels are truncated).
+    const name = (
+      li.getAttribute("data-asf-full-name") ||
+      label?.textContent ||
+      ""
+    ).trim();
     if (!name) return null;
     const id =
       li.getAttribute("data-item-id") ||
@@ -82,6 +95,35 @@
     return Number.isFinite(total) && total > 0 ? total : 1;
   }
 
+  /**
+   * Remove GitHub's paginated "Show more workflows..." control anywhere under nav.
+   * It can sit as a div inside the list or as a sibling; match by several signals.
+   */
+  function removeShowMoreControls(root) {
+    if (!root) return;
+    const victims = new Set();
+
+    root.querySelectorAll(SELECTORS.showMore).forEach((el) => victims.add(el));
+    root.querySelectorAll("[src*='workflows_partial']").forEach((el) => {
+      victims.add(el);
+    });
+    root.querySelectorAll("button, a, span, div").forEach((el) => {
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (/^Show more workflows/i.test(text) && text.length < 40) {
+        // Prefer removing the ActionList row wrapper when present.
+        const row =
+          el.closest("[data-target='nav-list-group.showMoreItem']") ||
+          el.closest(".ActionListItem") ||
+          el;
+        victims.add(row);
+      }
+    });
+
+    for (const el of victims) {
+      el.remove();
+    }
+  }
+
   async function collectWorkflowItems(nav) {
     const repo = parseRepoFromLocation();
     const byId = new Map();
@@ -94,10 +136,22 @@
         byId.set(item.id, item);
         return;
       }
-      // Prefer a live connected element when deduping.
-      if (item.element?.isConnected && !existing.element?.isConnected) {
-        byId.set(item.id, item);
+      const merged = { ...existing };
+      if (item.element?.isConnected) merged.element = item.element;
+      else if (!existing.element?.isConnected && item.element) {
+        merged.element = item.element;
       }
+      const itemSlashes = (item.name.match(/\//g) || []).length;
+      const existingSlashes = (existing.name.match(/\//g) || []).length;
+      if (
+        itemSlashes > existingSlashes ||
+        (itemSlashes === existingSlashes && item.name.length > existing.name.length)
+      ) {
+        merged.name = item.name;
+      }
+      if (item.href) merged.href = item.href;
+      merged.disabled = existing.disabled || item.disabled;
+      byId.set(item.id, merged);
     };
 
     nav.querySelectorAll(SELECTORS.workflowItem).forEach(addEl);
@@ -105,18 +159,57 @@
     if (!repo) return [...byId.values()];
 
     try {
-      const totalPages = readTotalPages(nav);
-      const htmlPages = await Promise.all(
-        Array.from({ length: totalPages }, (_, i) =>
-          fetchPartialPage(repo, i + 1).catch(() => null)
-        )
+      // Read pagination hint before we strip the Show more control.
+      const hintedPages = readTotalPages(nav);
+      let page = 1;
+      let consecutiveEmpty = 0;
+      let pagesFetched = 0;
+
+      globalThis.ASF?.log?.(
+        "collect start",
+        { hintedPages, domItems: byId.size }
       );
-      for (const html of htmlPages) {
-        if (!html) continue;
-        for (const el of parseWorkflowElementsFromHtml(html)) {
-          addEl(el);
+
+      while (page <= MAX_PARTIAL_PAGES) {
+        // Parallelize the hinted range on the first wave.
+        if (page === 1 && hintedPages > 1) {
+          const htmlPages = await Promise.all(
+            Array.from({ length: hintedPages }, (_, i) =>
+              fetchPartialPage(repo, i + 1).catch(() => null)
+            )
+          );
+          let lastCount = 0;
+          for (const html of htmlPages) {
+            pagesFetched += 1;
+            if (!html) {
+              consecutiveEmpty += 1;
+              continue;
+            }
+            const els = parseWorkflowElementsFromHtml(html);
+            lastCount = els.length;
+            if (els.length === 0) consecutiveEmpty += 1;
+            else consecutiveEmpty = 0;
+            for (const el of els) addEl(el);
+          }
+          page = hintedPages + 1;
+          if (lastCount === 0 || consecutiveEmpty > 0) break;
+          continue;
         }
+
+        const html = await fetchPartialPage(repo, page).catch(() => null);
+        pagesFetched += 1;
+        if (!html) break;
+        const els = parseWorkflowElementsFromHtml(html);
+        if (els.length === 0) break;
+        for (const el of els) addEl(el);
+        page += 1;
       }
+
+      globalThis.ASF?.log?.("collect done", {
+        pagesFetched,
+        items: byId.size,
+      });
+      globalThis.ASF?.updateDebug?.({ partialPagesFetched: pagesFetched });
     } catch {
       // Fail open: DOM-only items already collected.
     }
@@ -130,5 +223,6 @@
     isDisabledElement,
     parseWorkflowElement,
     collectWorkflowItems,
+    removeShowMoreControls,
   };
 });

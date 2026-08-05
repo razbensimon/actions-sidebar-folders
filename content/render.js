@@ -12,21 +12,51 @@
   const FOLDER_OPEN = "asf-folder--open";
   const NEST_CLASS = "asf-folder-children";
   const ROOT_MARK = "data-asf-rooted";
+  const ACTIVE_CLASS = "ActionListItem--navActive";
+
+  const CHEVRON_SVG = `
+    <svg class="asf-folder-chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" fill="currentColor"></path>
+    </svg>
+  `.trim();
 
   function findWorkflowList(nav) {
-    const item = nav.querySelector('li[data-test-selector="workflow-rendered"]');
-    if (item?.parentElement) return item.parentElement;
-    const showMore = nav.querySelector("[data-target='nav-list-group.showMoreItem']");
+    const marked = nav.querySelector(`ul[${ROOT_MARK}], [${ROOT_MARK}]`);
+    if (marked) {
+      return marked.tagName === "UL" ? marked : marked.querySelector("ul") || marked;
+    }
+
+    const topLevelItem = [
+      ...nav.querySelectorAll('li[data-test-selector="workflow-rendered"]'),
+    ].find((li) => !li.closest("." + FOLDER_CLASS));
+    if (topLevelItem?.parentElement) return topLevelItem.parentElement;
+
+    const showMore = nav.querySelector(
+      "[data-target='nav-list-group.showMoreItem']"
+    );
     if (showMore?.parentElement) return showMore.parentElement;
-    return null;
+
+    const wraps = [...nav.querySelectorAll("ul.ActionListWrap")].filter(
+      (ul) => !ul.classList.contains(NEST_CLASS)
+    );
+    return wraps[wraps.length - 1] || null;
   }
 
   function clearWorkflowList(listEl) {
-    listEl
-      .querySelectorAll(
-        'li[data-test-selector="workflow-rendered"], .' + FOLDER_CLASS + ', [data-target="nav-list-group.showMoreItem"]'
-      )
-      .forEach((el) => el.remove());
+    [...listEl.children].forEach((child) => {
+      if (
+        child.matches?.(
+          'li[data-test-selector="workflow-rendered"], .' +
+            FOLDER_CLASS +
+            ", [data-target='nav-list-group.showMoreItem'], [src*='workflows_partial']"
+        )
+      ) {
+        child.remove();
+        return;
+      }
+      const text = (child.textContent || "").replace(/\s+/g, " ").trim();
+      if (/^Show more workflows/i.test(text)) child.remove();
+    });
   }
 
   function setLeafLabel(li, displayName) {
@@ -34,11 +64,22 @@
     if (label) label.textContent = displayName;
   }
 
+  function ensureLeafGutter(li) {
+    const anchor = li.querySelector("a.ActionListContent");
+    if (!anchor || anchor.querySelector(".asf-leaf-gutter")) return;
+    // Nested leaves only — root leaves stay flush with GitHub’s list.
+    if (!li.closest("." + NEST_CLASS)) return;
+    const gutter = document.createElement("span");
+    gutter.className = "asf-leaf-gutter";
+    gutter.setAttribute("aria-hidden", "true");
+    anchor.prepend(gutter);
+    anchor.classList.add("asf-leaf-link");
+  }
+
   function ensureLeafElement(leaf) {
     const item = leaf.item;
     let li = item.element;
     if (!li || li.ownerDocument !== document) {
-      // Adopt parsed node into the live document.
       if (li) {
         li = document.importNode(li, true);
       } else {
@@ -46,7 +87,7 @@
         li.setAttribute("data-test-selector", "workflow-rendered");
         li.className = "actions-workflow-list-item ActionListItem";
         const a = document.createElement("a");
-        a.className = "ActionListContent";
+        a.className = "ActionListContent asf-leaf-link";
         a.href = item.href || "#";
         const span = document.createElement("span");
         span.className = "ActionListItem-label ActionListItem-label--truncate";
@@ -57,6 +98,10 @@
       item.element = li;
     }
     setLeafLabel(li, leaf.name);
+    ensureLeafGutter(li);
+    if (item.name) li.setAttribute("data-asf-full-name", item.name);
+    if (item.disabled) li.setAttribute("data-asf-disabled", "1");
+    else li.removeAttribute("data-asf-disabled");
     return li;
   }
 
@@ -78,6 +123,41 @@
     return node.children.some(pathContainsActive);
   }
 
+  function clearActiveStates(nav) {
+    nav.querySelectorAll("." + ACTIVE_CLASS).forEach((el) => {
+      el.classList.remove(ACTIVE_CLASS);
+      el.querySelector("a[aria-current]")?.removeAttribute("aria-current");
+    });
+  }
+
+  function markLeafActive(li) {
+    li.classList.add(ACTIVE_CLASS);
+    const anchor = li.querySelector("a.ActionListContent");
+    if (anchor) anchor.setAttribute("aria-current", "page");
+  }
+
+  function applySelection(nav) {
+    clearActiveStates(nav);
+    let matched = false;
+    nav
+      .querySelectorAll('li[data-test-selector="workflow-rendered"]')
+      .forEach((li) => {
+        const href = li.querySelector("a.ActionListContent")?.getAttribute("href");
+        if (isActivePath(href)) {
+          markLeafActive(li);
+          matched = true;
+        }
+      });
+    // Fall back to All workflows when no leaf matches (e.g. /actions hub).
+    if (!matched) {
+      const all = nav.querySelector('li[data-item-id="all_workflows"]');
+      if (all) {
+        all.classList.add(ACTIVE_CLASS);
+        all.querySelector("a")?.setAttribute("aria-current", "page");
+      }
+    }
+  }
+
   function createFolderElement(folder, settings) {
     const li = document.createElement("li");
     li.className = `ActionListItem ${FOLDER_CLASS}`;
@@ -88,10 +168,10 @@
     button.className = "ActionListContent asf-folder-toggle";
     button.setAttribute("aria-expanded", "false");
 
-    const chevron = document.createElement("span");
-    chevron.className = "asf-folder-chevron";
-    chevron.setAttribute("aria-hidden", "true");
-    chevron.textContent = "▸";
+    const chevronWrap = document.createElement("span");
+    chevronWrap.className = "asf-folder-chevron-wrap";
+    chevronWrap.setAttribute("aria-hidden", "true");
+    chevronWrap.innerHTML = CHEVRON_SVG;
 
     const label = document.createElement("span");
     label.className = "ActionListItem-label";
@@ -101,7 +181,7 @@
     count.className = "asf-folder-count";
     count.textContent = String(countLeaves(folder));
 
-    button.append(chevron, label, count);
+    button.append(chevronWrap, label, count);
     li.appendChild(button);
 
     const childList = document.createElement("ul");
@@ -139,24 +219,17 @@
   function setFolderOpen(li, open) {
     const button = li.querySelector(":scope > .asf-folder-toggle");
     const childList = li.querySelector(":scope > ." + NEST_CLASS);
-    const chevron = li.querySelector(":scope > .asf-folder-toggle .asf-folder-chevron");
     li.classList.toggle(FOLDER_OPEN, open);
     if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
     if (childList) childList.hidden = !open;
-    if (chevron) chevron.textContent = open ? "▾" : "▸";
   }
 
-  /**
-   * @param {Element} nav
-   * @param {import('./tree.js').TreeNode[]} tree
-   * @param {{ collapseFoldersByDefault: boolean }} settings
-   * @param {import('./tree.js').WorkflowItem[]} [disabledFolderItems]
-   */
   function renderTree(nav, tree, settings, disabledFolderItems = []) {
     const listEl = findWorkflowList(nav);
     if (!listEl) return false;
 
     clearWorkflowList(listEl);
+    globalThis.ASF?.removeShowMoreControls?.(nav);
 
     const nodes = tree.slice();
     if (disabledFolderItems.length > 0) {
@@ -176,16 +249,18 @@
       });
     }
 
-    // Keep Disabled after normal folders/leaves — re-sort top level with Disabled last
-    const disabled = nodes.filter((n) => n.type === "folder" && n.name === "Disabled");
-    const rest = nodes.filter((n) => !(n.type === "folder" && n.name === "Disabled"));
+    const disabled = nodes.filter(
+      (n) => n.type === "folder" && n.name === "Disabled"
+    );
+    const rest = nodes.filter(
+      (n) => !(n.type === "folder" && n.name === "Disabled")
+    );
     const ordered = [...rest, ...disabled];
 
     for (const node of ordered) {
       if (node.type === "folder") {
         const folderEl = createFolderElement(node, {
           ...settings,
-          // Disabled folder always starts collapsed unless it contains the active workflow
           collapseFoldersByDefault:
             node.name === "Disabled" ? true : settings.collapseFoldersByDefault,
         });
@@ -196,6 +271,8 @@
     }
 
     listEl.setAttribute(ROOT_MARK, "1");
+    applySelection(nav);
+    globalThis.ASF?.removeShowMoreControls?.(nav);
     return true;
   }
 
@@ -204,5 +281,6 @@
     findWorkflowList,
     renderTree,
     pathContainsActive,
+    applySelection,
   };
 });

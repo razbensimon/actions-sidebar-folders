@@ -5,6 +5,7 @@ docs/superpowers/
 node_modules/
 npm-debug.log*
 pnpm-debug.log*
+.asf-debug.log
 .DS_Store
 
 # Editor / OS

@@ -109,6 +109,21 @@ legend {
   font-size: 0.92rem;
 }
 
+.btn {
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--card));
+}
+
 .status {
   min-height: 1.25rem;
   margin: 0;

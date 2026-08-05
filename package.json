@@ -4,7 +4,8 @@
   "private": true,
   "description": "Nest GitHub Actions sidebar workflows by slash-separated name prefixes",
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dev:logs": "node scripts/dev-log-server.mjs"
   },
   "packageManager": "pnpm@10.22.0",
   "engines": {

@@ -25,12 +25,16 @@
     "open_in_tab": true
   },
   "permissions": ["storage"],
-  "host_permissions": ["https://github.com/*"],
+  "host_permissions": [
+    "https://github.com/*",
+    "http://127.0.0.1:3927/*"
+  ],
   "content_scripts": [
     {
       "matches": ["https://github.com/*/*/actions*"],
       "js": [
         "content/settings.js",
+        "content/debug.js",
         "content/tree.js",
         "content/disabled.js",
         "content/fetch.js",
@@ -38,7 +42,7 @@
         "content/content.js"
       ],
       "css": ["content/content.css"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "homepage_url": "https://github.com/razbensimon/actions-sidebar-folders"

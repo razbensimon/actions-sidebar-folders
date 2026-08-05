@@ -57,6 +57,30 @@
           </p>
         </fieldset>
 
+        <fieldset>
+          <legend>Developer</legend>
+          <label class="choice">
+            <input type="checkbox" id="debugMode" />
+            <span>
+              <strong>Debug mode</strong>
+              <small>
+                Log <code>[ASF]</code> in the GitHub tab DevTools console, attach
+                <code>data-asf-debug</code> on the nav, and stream to
+                <code>pnpm dev:logs</code> (<code>127.0.0.1:3927</code>) when that
+                server is running.
+              </small>
+            </span>
+          </label>
+          <p class="note">
+            After editing extension files: open
+            <code>chrome://extensions</code> → click the reload ⟳ on this
+            extension → refresh the Actions tab.
+          </p>
+          <button type="button" id="reload-extension" class="btn">
+            Reload extension now
+          </button>
+        </fieldset>
+
         <p id="status" class="status" role="status" aria-live="polite"></p>
       </form>
 

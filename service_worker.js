@@ -4,6 +4,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   const defaults = {
     disabledMode: "hide",
     collapseFoldersByDefault: true,
+    debugMode: false,
   };
   const current = await chrome.storage.sync.get(defaults);
   await chrome.storage.sync.set({
@@ -17,5 +18,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       typeof current.collapseFoldersByDefault === "boolean"
         ? current.collapseFoldersByDefault
         : defaults.collapseFoldersByDefault,
+    debugMode:
+      typeof current.debugMode === "boolean"
+        ? current.debugMode
+        : defaults.debugMode,
   });
 });

@@ -20,6 +20,7 @@ Right-click the extension → **Options** (or Details → Extension options):
 |---|---|
 | Disabled workflows: Hide / Folder / Leave flat | **Hide** |
 | Collapse folders by default | **On** (path to the active workflow still expands) |
+| Debug mode | **Off** |
 
 Max folder depth is fixed at **3**. Extra `/` segments stay on the leaf label (`CI / Lint / JS / Unit / Foo` → folders `CI` → `Lint` → `JS`, leaf `Unit / Foo`).
 
@@ -41,7 +42,27 @@ No analytics. No third-party servers.
 
 ```bash
 pnpm test
+pnpm dev:logs   # optional: stream [ASF] logs to terminal + .asf-debug.log
 ```
+
+### Fast local loop
+
+1. Load unpacked from this repo folder (once)
+2. Edit code → Options → **Reload extension now** (or ⟳ on `chrome://extensions`) → refresh the Actions tab
+3. Enable **Debug mode** in Options
+4. (Optional) Run `pnpm dev:logs` so Cursor/agents can watch the same stream
+
+**Where to look**
+
+| What | Where |
+|---|---|
+| `[ASF]` logs | DevTools on the **GitHub tab** → Console (filter `ASF`) |
+| Stream for agents | Terminal running `pnpm dev:logs`, or `.asf-debug.log` |
+| Live snapshot | Console context → this extension’s content script → `__ASF_DEBUG__` / `__ASF_DEBUG__.dump()` |
+| DOM summary | Elements → `nav[aria-label="Actions Workflows"]` → attribute `data-asf-debug` |
+| Force rebuild | In content-script console context: `__ASF_DEBUG__.rebuild()` |
+
+Content scripts run in an isolated world: pick the extension context in the Console context dropdown (not `top`) to read `__ASF_DEBUG__`. Logs still appear in the normal page console.
 
 ## License
 

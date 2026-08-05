@@ -1,8 +1,21 @@
-/* Folder rows in the Actions workflow sidebar */
+/* Hide GitHub's flat workflow rows until ASF has grouped them (FOUC guard).
+   Nested leaves inside .asf-folder stay visible once rendered. */
+nav[aria-label="Actions Workflows"]:not([data-asf-ready])
+  li[data-test-selector="workflow-rendered"]:not(.asf-folder li),
+nav[aria-label="Actions Workflows"]:not([data-asf-ready])
+  [data-target="nav-list-group.showMoreItem"],
+nav[aria-label="Actions Workflows"]:not([data-asf-ready])
+  [src*="workflows_partial"] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Folder rows — align with GitHub Primer ActionList */
+
 .asf-folder > .asf-folder-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   cursor: pointer;
   background: transparent;
@@ -12,27 +25,64 @@
   font: inherit;
 }
 
-.asf-folder-chevron {
+.asf-folder-chevron-wrap {
   display: inline-flex;
-  width: 1rem;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
   color: var(--fgColor-muted, var(--color-fg-muted));
-  font-size: 0.75rem;
-  line-height: 1;
+}
+
+.asf-folder-chevron {
+  display: block;
+  transition: transform 120ms ease;
+  transform-origin: center;
+}
+
+.asf-folder--open > .asf-folder-toggle .asf-folder-chevron {
+  transform: rotate(90deg);
 }
 
 .asf-folder-count {
   margin-left: auto;
+  padding-left: 8px;
   color: var(--fgColor-muted, var(--color-fg-muted));
-  font-size: 0.75rem;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Nested tree: guide line + indent so leaves sit under folder labels */
 .asf-folder-children {
-  padding-left: 0.75rem;
   margin: 0;
+  margin-inline-start: 0.5rem;
+  padding: 0;
+  padding-inline-start: 0.5rem;
   list-style: none;
+  border-inline-start: 1px solid
+    var(--borderColor-muted, var(--color-border-muted, rgba(128, 128, 128, 0.35)));
 }
 
-.asf-folder-children .ActionListItem-label {
-  /* nested leaves keep Primer truncation */
+/* Spacer matching chevron width so leaf text lines up with folder titles */
+.asf-leaf-gutter {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.asf-leaf-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Ensure selected leaf keeps Primer’s navActive treatment even if GitHub
+   briefly paints "All workflows" as current during Turbo navigations */
+.asf-folder-children li.ActionListItem--navActive > .ActionListContent,
+nav[aria-label="Actions Workflows"]
+  li[data-test-selector="workflow-rendered"].ActionListItem--navActive
+  > .ActionListContent {
+  font-weight: 600;
 }

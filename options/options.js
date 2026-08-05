@@ -1,10 +1,13 @@
 const form = document.getElementById("settings-form");
 const statusEl = document.getElementById("status");
 const collapseEl = document.getElementById("collapseFoldersByDefault");
+const debugEl = document.getElementById("debugMode");
+const reloadBtn = document.getElementById("reload-extension");
 
 const DEFAULTS = {
   disabledMode: "hide",
   collapseFoldersByDefault: true,
+  debugMode: false,
 };
 
 function setStatus(message) {
@@ -22,6 +25,7 @@ async function load() {
   const radio = form.querySelector(`input[name="disabledMode"][value="${mode}"]`);
   if (radio) radio.checked = true;
   collapseEl.checked = Boolean(stored.collapseFoldersByDefault);
+  debugEl.checked = Boolean(stored.debugMode);
 }
 
 async function save() {
@@ -30,12 +34,22 @@ async function save() {
   await chrome.storage.sync.set({
     disabledMode,
     collapseFoldersByDefault: collapseEl.checked,
+    debugMode: debugEl.checked,
   });
-  setStatus("Saved — open a GitHub Actions page to see the change.");
+  setStatus(
+    debugEl.checked
+      ? "Saved — open DevTools on the GitHub Actions tab to see [ASF] logs."
+      : "Saved — open a GitHub Actions page to see the change."
+  );
 }
 
 form.addEventListener("change", () => {
   save().catch((err) => setStatus(String(err.message || err)));
+});
+
+reloadBtn.addEventListener("click", () => {
+  setStatus("Reloading extension…");
+  chrome.runtime.reload();
 });
 
 load().catch((err) => setStatus(String(err.message || err)));
