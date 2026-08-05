@@ -41,7 +41,7 @@ Features
 
 Install tip: after installing, open any repository’s Actions tab on github.com.
 
-Open source (MIT): https://github.com/razbensimon/actions-sidebar-folders
+Open source (Apache-2.0): https://github.com/razbensimon/actions-sidebar-folders
 ```
 
 ## Privacy tab

@@ -81,4 +81,4 @@ Content scripts run in an isolated world: pick the extension context in the Cons
 
 ## License
 
-MIT
+[Apache License 2.0](./LICENSE)

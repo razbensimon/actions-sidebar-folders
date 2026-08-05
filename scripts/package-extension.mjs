@@ -31,6 +31,7 @@ const INCLUDE = [
   "options",
   "icons",
   "LICENSE",
+  "NOTICE",
   "README.md",
   "PRIVACY.md",
 ];
