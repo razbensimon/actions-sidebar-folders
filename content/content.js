@@ -35,6 +35,8 @@
 
   function markReady(nav) {
     if (!nav) return;
+    // Drop GitHub re-injected flat rows before revealing.
+    ASF.pruneStrayNativeWorkflows?.(nav);
     nav.setAttribute(READY_ATTR, "1");
     clearTimeout(failOpenTimer);
   }
@@ -160,22 +162,29 @@
       });
 
       if (key === lastKey && nav.querySelector("." + ASF.FOLDER_CLASS)) {
-        ASF.log?.("rebuild skipped (unchanged)", {
-          items: items.length,
-          ms: Math.round(performance.now() - t0),
-        });
-        ASF.applySelection?.(nav);
-        markReady(nav);
-        ASF.updateDebug?.({
-          itemCount: items.length,
-          nestableCount: nestable.length,
-          disabledCount: disabledFolderItems.length,
-          folderNames: ASF.summarizeTree?.(tree) || [],
-          showMorePresent: ASF.detectShowMore?.(nav) ?? null,
-          lastRebuildAt: new Date().toISOString(),
-          lastReason: reason + ":skip",
-        });
-        return;
+        const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
+        if (strays > 0) {
+          ASF.log?.("pruned stray native rows", { strays });
+        }
+        if (!ASF.hasStrayNativeWorkflows?.(nav)) {
+          ASF.log?.("rebuild skipped (unchanged)", {
+            items: items.length,
+            ms: Math.round(performance.now() - t0),
+          });
+          ASF.applySelection?.(nav);
+          markReady(nav);
+          ASF.updateDebug?.({
+            itemCount: items.length,
+            nestableCount: nestable.length,
+            disabledCount: disabledFolderItems.length,
+            folderNames: ASF.summarizeTree?.(tree) || [],
+            showMorePresent: ASF.detectShowMore?.(nav) ?? null,
+            lastRebuildAt: new Date().toISOString(),
+            lastReason: reason + ":skip",
+          });
+          return;
+        }
+        // Strays remained — fall through to full paint.
       }
 
       const painted = paint(nav, items, settings);
@@ -234,13 +243,22 @@
             node.matches?.(ASF.SELECTORS.workflowItem) ||
             node.querySelector?.(ASF.SELECTORS.workflowItem)
           ) {
-            // Synchronously hide native rows before paint can flash.
-            markPending(
+            const nav =
               node.matches?.(ASF.SELECTORS.nav)
                 ? node
                 : node.querySelector?.(ASF.SELECTORS.nav) ||
-                    document.querySelector(ASF.SELECTORS.nav)
-            );
+                  document.querySelector(ASF.SELECTORS.nav);
+            // If folders already exist, immediately drop re-injected flat rows.
+            if (nav?.querySelector("." + ASF.FOLDER_CLASS)) {
+              const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
+              if (strays > 0) {
+                ASF.log?.("live-pruned stray native rows", { strays });
+                ASF.applySelection?.(nav);
+                // No full rebuild needed if our tree is intact.
+                if (!ASF.hasStrayNativeWorkflows?.(nav)) return;
+              }
+            }
+            markPending(nav);
             scheduleRebuild("mutation");
             return;
           }

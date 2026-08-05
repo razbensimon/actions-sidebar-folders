@@ -99,10 +99,79 @@
     }
     setLeafLabel(li, leaf.name);
     ensureLeafGutter(li);
+    li.setAttribute("data-asf-leaf", "1");
     if (item.name) li.setAttribute("data-asf-full-name", item.name);
     if (item.disabled) li.setAttribute("data-asf-disabled", "1");
     else li.removeAttribute("data-asf-disabled");
     return li;
+  }
+
+  /**
+   * GitHub/Turbo often re-injects flat workflow <li>s beside our folders.
+   * Remove those strays; keep rows we marked with data-asf-leaf (incl. root leaves).
+   */
+  function pruneStrayNativeWorkflows(nav) {
+    if (!nav) return 0;
+    let removed = 0;
+    const listEl = findWorkflowList(nav);
+    const roots = listEl ? [listEl] : [];
+    // Also scan direct workflow groups under nav in case listEl is nested oddly.
+    nav.querySelectorAll("ul.ActionListWrap").forEach((ul) => {
+      if (!ul.classList.contains(NEST_CLASS)) roots.push(ul);
+    });
+
+    for (const root of new Set(roots)) {
+      [...root.children].forEach((child) => {
+        if (
+          child.matches?.(
+            'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
+          )
+        ) {
+          child.remove();
+          removed += 1;
+          return;
+        }
+        if (
+          child.matches?.(
+            "[data-target='nav-list-group.showMoreItem'], [src*='workflows_partial']"
+          )
+        ) {
+          child.remove();
+          removed += 1;
+          return;
+        }
+        const text = (child.textContent || "").replace(/\s+/g, " ").trim();
+        if (/^Show more workflows/i.test(text)) {
+          child.remove();
+          removed += 1;
+        }
+      });
+    }
+
+    if (typeof globalThis.ASF?.removeShowMoreControls === "function") {
+      globalThis.ASF.removeShowMoreControls(nav);
+    }
+    return removed;
+  }
+
+  function hasStrayNativeWorkflows(nav) {
+    if (!nav) return false;
+    const listEl = findWorkflowList(nav);
+    if (
+      listEl &&
+      [...listEl.children].some((c) =>
+        c.matches?.(
+          'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
+        )
+      )
+    ) {
+      return true;
+    }
+    return Boolean(
+      nav.querySelector(
+        `ul.ActionListWrap:not(.${NEST_CLASS}) > li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])`
+      )
+    );
   }
 
   function isActivePath(href) {
@@ -272,6 +341,7 @@
 
     listEl.setAttribute(ROOT_MARK, "1");
     applySelection(nav);
+    pruneStrayNativeWorkflows(nav);
     globalThis.ASF?.removeShowMoreControls?.(nav);
     return true;
   }
@@ -282,5 +352,7 @@
     renderTree,
     pathContainsActive,
     applySelection,
+    pruneStrayNativeWorkflows,
+    hasStrayNativeWorkflows,
   };
 });
