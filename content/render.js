@@ -21,26 +21,125 @@
     </svg>
   `.trim();
 
+  /** Management lives in its own ActionListWrap — never paint folders there. */
+  function isManagementList(ul) {
+    if (!ul || ul.nodeType !== 1) return false;
+    if (
+      ul.querySelector(
+        '[data-item-id="caches"], [data-item-id="deployments"], [data-item-id="runners"], [data-item-id="attestations"]'
+      )
+    ) {
+      return true;
+    }
+    const labelId = ul.getAttribute("aria-labelledby");
+    if (labelId) {
+      const heading = ul.ownerDocument.getElementById(labelId);
+      if (heading && /^\s*Management\s*$/i.test(heading.textContent || "")) {
+        return true;
+      }
+    }
+    const title = ul
+      .closest("nav-list-group, action-list, li")
+      ?.querySelector?.(".ActionList-sectionDivider-title");
+    return Boolean(
+      title && /^\s*Management\s*$/i.test(title.textContent || "")
+    );
+  }
+
+  function candidateWraps(nav) {
+    return [...nav.querySelectorAll("ul.ActionListWrap")].filter(
+      (ul) =>
+        !ul.classList.contains(NEST_CLASS) &&
+        ul.getAttribute("data-target") !== "nav-list.topLevelList" &&
+        !isManagementList(ul)
+    );
+  }
+
   function findWorkflowList(nav) {
+    let list = null;
+
     const marked = nav.querySelector(`ul[${ROOT_MARK}], [${ROOT_MARK}]`);
     if (marked) {
-      return marked.tagName === "UL" ? marked : marked.querySelector("ul") || marked;
+      const ul =
+        marked.tagName === "UL" ? marked : marked.querySelector("ul") || marked;
+      if (ul && !isManagementList(ul)) {
+        list = ul;
+      } else {
+        // Stale mark on Management (or other non-workflow list) — drop it.
+        marked.removeAttribute?.(ROOT_MARK);
+        if (ul && ul !== marked) ul.removeAttribute?.(ROOT_MARK);
+      }
     }
 
-    const topLevelItem = [
-      ...nav.querySelectorAll('li[data-test-selector="workflow-rendered"]'),
-    ].find((li) => !li.closest("." + FOLDER_CLASS));
-    if (topLevelItem?.parentElement) return topLevelItem.parentElement;
+    if (!list) {
+      const topLevelItem = [
+        ...nav.querySelectorAll('li[data-test-selector="workflow-rendered"]'),
+      ].find((li) => !li.closest("." + FOLDER_CLASS));
+      if (
+        topLevelItem?.parentElement &&
+        !isManagementList(topLevelItem.parentElement)
+      ) {
+        list = topLevelItem.parentElement;
+      }
+    }
 
-    const showMore = nav.querySelector(
-      "[data-target='nav-list-group.showMoreItem']"
-    );
-    if (showMore?.parentElement) return showMore.parentElement;
+    if (!list) {
+      const leaf = nav.querySelector("[data-asf-leaf]");
+      if (leaf?.parentElement && !isManagementList(leaf.parentElement)) {
+        // Parent may be a nested folder list — walk up to rooted/group wrap.
+        const rooted = leaf.closest(`ul[${ROOT_MARK}]`);
+        if (rooted && !isManagementList(rooted)) {
+          list = rooted;
+        } else {
+          const wrap = leaf.closest("ul.ActionListWrap");
+          if (
+            wrap &&
+            !isManagementList(wrap) &&
+            !wrap.classList.contains(NEST_CLASS)
+          ) {
+            list = wrap;
+          }
+        }
+      }
+    }
 
-    const wraps = [...nav.querySelectorAll("ul.ActionListWrap")].filter(
-      (ul) => !ul.classList.contains(NEST_CLASS)
-    );
-    return wraps[wraps.length - 1] || null;
+    if (!list) {
+      const showMore = nav.querySelector(
+        "[data-target='nav-list-group.showMoreItem'], [src*='workflows_partial']"
+      );
+      if (
+        showMore?.parentElement &&
+        !isManagementList(showMore.parentElement)
+      ) {
+        list = showMore.parentElement;
+      }
+    }
+
+    if (!list) {
+      const wraps = candidateWraps(nav);
+      const withHint = wraps.find((ul) =>
+        ul.querySelector(
+          '[data-test-selector="workflow-rendered"], [data-asf-leaf], .' +
+            FOLDER_CLASS +
+            ", [src*='workflows_partial']"
+        )
+      );
+      // After prune, workflow <ul> is empty but still precedes Management.
+      list = withHint || wraps[0] || null;
+    }
+
+    return list;
+  }
+
+  /** Remove folders/leaves painted into the wrong list (e.g. Management). */
+  function scrubMisplacedPaint(nav, keepList) {
+    nav.querySelectorAll("." + FOLDER_CLASS + ", [data-asf-leaf]").forEach((el) => {
+      if (keepList && keepList.contains(el)) return;
+      el.remove();
+    });
+    nav.querySelectorAll(`[${ROOT_MARK}]`).forEach((el) => {
+      if (el !== keepList) el.removeAttribute(ROOT_MARK);
+    });
   }
 
   function clearWorkflowList(listEl) {
@@ -86,6 +185,8 @@
       }
       item.element = li;
     }
+    // Persist stable id so later DOM collects don't key by href alone.
+    if (item.id) li.setAttribute("data-item-id", String(item.id));
     // Drop previous flex-gutter hacks if reusing a node.
     li.querySelector(".asf-leaf-gutter")?.remove();
     li.querySelector("a.ActionListContent")?.classList.remove("asf-leaf-link");
@@ -278,6 +379,8 @@
     const listEl = findWorkflowList(nav);
     if (!listEl) return false;
 
+    // Drop any prior paint that landed in Management (or elsewhere).
+    scrubMisplacedPaint(nav, listEl);
     clearWorkflowList(listEl);
     globalThis.ASF?.removeShowMoreControls?.(nav);
 
@@ -323,8 +426,39 @@
     listEl.setAttribute(ROOT_MARK, "1");
     applySelection(nav);
     pruneStrayNativeWorkflows(nav);
+    collapseAdjacentDividers(nav);
     globalThis.ASF?.removeShowMoreControls?.(nav);
+
     return true;
+  }
+
+  /** Remove back-to-back section dividers (double-line glitch). */
+  function collapseAdjacentDividers(nav) {
+    if (!nav) return 0;
+    let removed = 0;
+    // Walk nav children / nested lists — GitHub may stack two divider <li>s
+    // with only whitespace between them, or both as direct ActionList siblings.
+    const candidates = [...nav.querySelectorAll("li.ActionList-sectionDivider, .ActionList-sectionDivider")];
+    for (let i = 0; i < candidates.length - 1; i++) {
+      const a = candidates[i];
+      const b = candidates[i + 1];
+      if (!a.isConnected || !b.isConnected) continue;
+      let next = a.nextElementSibling;
+      while (next && next !== b) {
+        const t = (next.textContent || "").trim();
+        const isEmpty =
+          !t ||
+          next.matches?.("li:empty") ||
+          (next.children.length === 0 && !t);
+        if (!isEmpty) break;
+        next = next.nextElementSibling;
+      }
+      if (next === b || a.nextElementSibling === b) {
+        b.remove();
+        removed += 1;
+      }
+    }
+    return removed;
   }
 
   return {
@@ -335,5 +469,6 @@
     applySelection,
     pruneStrayNativeWorkflows,
     hasStrayNativeWorkflows,
+    collapseAdjacentDividers,
   };
 });

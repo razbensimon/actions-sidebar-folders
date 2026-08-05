@@ -68,6 +68,44 @@
     };
   }
 
+  /**
+   * Collapse items that share the same workflow href (e.g. numeric data-item-id
+   * vs href-as-id after cache-created leaves omitted data-item-id).
+   */
+  function dedupeByHref(items) {
+    const byHref = new Map();
+    for (const item of items) {
+      const key = item.href || `id:${item.id}`;
+      const existing = byHref.get(key);
+      if (!existing) {
+        byHref.set(key, item);
+        continue;
+      }
+      const merged = { ...existing };
+      if (item.element?.isConnected) merged.element = item.element;
+      else if (!existing.element?.isConnected && item.element) {
+        merged.element = item.element;
+      }
+      const itemSlashes = (item.name.match(/\//g) || []).length;
+      const existingSlashes = (existing.name.match(/\//g) || []).length;
+      if (
+        itemSlashes > existingSlashes ||
+        (itemSlashes === existingSlashes &&
+          item.name.length > existing.name.length)
+      ) {
+        merged.name = item.name;
+      }
+      // Prefer stable numeric workflow ids over href-as-id.
+      if (/^\d+$/.test(String(item.id)) && !/^\d+$/.test(String(existing.id))) {
+        merged.id = item.id;
+      }
+      if (item.href) merged.href = item.href;
+      merged.disabled = existing.disabled || item.disabled;
+      byHref.set(key, merged);
+    }
+    return [...byHref.values()];
+  }
+
   function parseWorkflowElementsFromHtml(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     return [...doc.querySelectorAll(SELECTORS.workflowItem)];
@@ -214,7 +252,7 @@
       // Fail open: DOM-only items already collected.
     }
 
-    return [...byId.values()];
+    return dedupeByHref([...byId.values()]);
   }
 
   return {
@@ -224,5 +262,6 @@
     parseWorkflowElement,
     collectWorkflowItems,
     removeShowMoreControls,
+    dedupeByHref,
   };
 });

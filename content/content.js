@@ -42,7 +42,8 @@
   }
 
   function cacheKey(repo) {
-    return `asf:workflows:${repo.owner}/${repo.repo}`;
+    // v3: invalidate caches that mixed href-ids with numeric workflow ids.
+    return `asf:workflows:v3:${repo.owner}/${repo.repo}`;
   }
 
   function readCache(repo) {
@@ -51,7 +52,9 @@
       const raw = sessionStorage.getItem(cacheKey(repo));
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : null;
+      if (!Array.isArray(parsed)) return null;
+      // Defensive dedupe for any stale shape.
+      return ASF.dedupeByHref ? ASF.dedupeByHref(parsed) : parsed;
     } catch {
       return null;
     }
@@ -60,7 +63,8 @@
   function writeCache(repo, items) {
     if (!repo || !items?.length) return;
     try {
-      const slim = items.map((i) => ({
+      const deduped = ASF.dedupeByHref ? ASF.dedupeByHref(items) : items;
+      const slim = deduped.map((i) => ({
         id: i.id,
         name: i.name,
         href: i.href,
