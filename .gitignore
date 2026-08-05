@@ -1,0 +1,19 @@
+# Local design/plan artifacts (not part of the published extension)
+docs/superpowers/
+
+# Dependencies & tooling
+node_modules/
+npm-debug.log*
+.DS_Store
+
+# Editor / OS
+*.swp
+.idea/
+.vscode/
+
+# Chrome packaging artifacts
+*.crx
+*.pem
+*.zip
+dist/
+build/

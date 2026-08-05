@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Actions Sidebar Folders — Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <h1>Actions Sidebar Folders</h1>
+        <p class="lede">
+          Nest GitHub Actions workflows by <code>/</code> in the name (up to 3
+          folder levels).
+        </p>
+      </header>
+
+      <form id="settings-form" class="card">
+        <fieldset>
+          <legend>Disabled workflows</legend>
+          <label class="choice">
+            <input type="radio" name="disabledMode" value="hide" />
+            <span>
+              <strong>Hide</strong>
+              <small>Remove disabled workflows from the sidebar (default).</small>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="disabledMode" value="folder" />
+            <span>
+              <strong>Folder</strong>
+              <small>Group them under a collapsed “Disabled” folder.</small>
+            </span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="disabledMode" value="flat" />
+            <span>
+              <strong>Leave flat</strong>
+              <small>Keep GitHub’s default placement (still nest names with <code>/</code>).</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Folders</legend>
+          <label class="choice">
+            <input type="checkbox" id="collapseFoldersByDefault" />
+            <span>
+              <strong>Collapse folders by default</strong>
+              <small>The folder path to the active workflow always expands.</small>
+            </span>
+          </label>
+          <p class="note">
+            Max folder depth is fixed at <strong>3</strong>. Extra
+            <code>/</code> segments stay on the leaf label.
+          </p>
+        </fieldset>
+
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="card muted">
+        <h2>Privacy</h2>
+        <p>
+          This extension only runs on <code>github.com</code>, stores settings in
+          Chrome sync, and does not send data to third parties. Workflow lists are
+          loaded with your existing GitHub session (no personal access token).
+        </p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

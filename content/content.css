@@ -1,0 +1,38 @@
+/* Folder rows in the Actions workflow sidebar */
+.asf-folder > .asf-folder-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: var(--fgColor-default, var(--color-fg-default));
+  font: inherit;
+}
+
+.asf-folder-chevron {
+  display: inline-flex;
+  width: 1rem;
+  flex: 0 0 auto;
+  color: var(--fgColor-muted, var(--color-fg-muted));
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.asf-folder-count {
+  margin-left: auto;
+  color: var(--fgColor-muted, var(--color-fg-muted));
+  font-size: 0.75rem;
+}
+
+.asf-folder-children {
+  padding-left: 0.75rem;
+  margin: 0;
+  list-style: none;
+}
+
+.asf-folder-children .ActionListItem-label {
+  /* nested leaves keep Primer truncation */
+}
