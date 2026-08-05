@@ -5,7 +5,9 @@
   "description": "Nest GitHub Actions sidebar workflows by slash-separated name prefixes",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "dev:logs": "node scripts/dev-log-server.mjs"
+    "dev:logs": "node scripts/dev-log-server.mjs",
+    "package": "node scripts/package-extension.mjs",
+    "release:zip": "pnpm test && pnpm package"
   },
   "packageManager": "pnpm@10.22.0",
   "engines": {

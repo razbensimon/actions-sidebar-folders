@@ -19,3 +19,9 @@ pnpm-debug.log*
 *.zip
 dist/
 build/
+
+# Local store screenshot drafts (keep README under store/screenshots/)
+store/screenshots/*.png
+store/screenshots/*.jpg
+store/screenshots/*.jpeg
+store/screenshots/*.webp
