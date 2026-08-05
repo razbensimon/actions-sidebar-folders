@@ -40,7 +40,7 @@ No analytics. No third-party servers.
 ## Development
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## License

@@ -4,6 +4,7 @@ docs/superpowers/
 # Dependencies & tooling
 node_modules/
 npm-debug.log*
+pnpm-debug.log*
 .DS_Store
 
 # Editor / OS
