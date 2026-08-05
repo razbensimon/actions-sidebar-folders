@@ -58,7 +58,7 @@ Organize the GitHub Actions sidebar by nesting workflows whose names contain sla
 https://github.com/razbensimon/actions-sidebar-folders/blob/main/PRIVACY.md
 ```
 
-If the repo is still private, either make it public before submit, or host `PRIVACY.md` on a public HTTPS page (GitHub Pages / public gist) and paste that URL instead.
+Raw text (also works): `https://raw.githubusercontent.com/razbensimon/actions-sidebar-folders/main/PRIVACY.md`
 
 **Data use**
 
