@@ -1,13 +1,14 @@
-/* Hide GitHub's flat workflow rows until ASF has grouped them (FOUC guard).
-   Nested leaves inside .asf-folder stay visible once rendered. */
-nav[aria-label="Actions Workflows"]:not([data-asf-ready])
-  li[data-test-selector="workflow-rendered"]:not(.asf-folder li),
-nav[aria-label="Actions Workflows"]:not([data-asf-ready])
-  [data-target="nav-list-group.showMoreItem"],
-nav[aria-label="Actions Workflows"]:not([data-asf-ready])
-  [src*="workflows_partial"] {
-  visibility: hidden !important;
-  pointer-events: none !important;
+/* Always hide GitHub-native workflow rows we did not render.
+   Our leaves are marked data-asf-leaf. This kills FOUC + duplicate strays
+   even when Turbo keeps data-asf-ready on the same <nav>. */
+nav[aria-label="Actions Workflows"]
+  li[data-test-selector="workflow-rendered"]:not([data-asf-leaf]) {
+  display: none !important;
+}
+
+nav[aria-label="Actions Workflows"] [data-target="nav-list-group.showMoreItem"],
+nav[aria-label="Actions Workflows"] [src*="workflows_partial"] {
+  display: none !important;
 }
 
 /* Folder rows — align with GitHub Primer ActionList */

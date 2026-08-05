@@ -234,6 +234,7 @@
   function observe() {
     const observer = new MutationObserver((mutations) => {
       if (rebuilding) return;
+      let sawWorkflowDom = false;
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (!(node instanceof Element)) continue;
@@ -241,28 +242,33 @@
             node.matches?.(ASF.SELECTORS.nav) ||
             node.querySelector?.(ASF.SELECTORS.nav) ||
             node.matches?.(ASF.SELECTORS.workflowItem) ||
-            node.querySelector?.(ASF.SELECTORS.workflowItem)
+            node.querySelector?.(ASF.SELECTORS.workflowItem) ||
+            node.matches?.("[data-target='nav-list-group.showMoreItem']")
           ) {
-            const nav =
-              node.matches?.(ASF.SELECTORS.nav)
-                ? node
-                : node.querySelector?.(ASF.SELECTORS.nav) ||
-                  document.querySelector(ASF.SELECTORS.nav);
-            // If folders already exist, immediately drop re-injected flat rows.
-            if (nav?.querySelector("." + ASF.FOLDER_CLASS)) {
-              const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
-              if (strays > 0) {
-                ASF.log?.("live-pruned stray native rows", { strays });
-                ASF.applySelection?.(nav);
-                // No full rebuild needed if our tree is intact.
-                if (!ASF.hasStrayNativeWorkflows?.(nav)) return;
-              }
-            }
-            markPending(nav);
-            scheduleRebuild("mutation");
-            return;
+            sawWorkflowDom = true;
+            break;
           }
         }
+        if (sawWorkflowDom) break;
+      }
+      if (!sawWorkflowDom) return;
+
+      const nav = document.querySelector(ASF.SELECTORS.nav);
+      // Sync: hide via CSS is instant; also delete unmarked nodes so selection
+      // / counts stay correct.
+      const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
+      if (strays > 0) {
+        ASF.log?.("live-pruned stray native rows", { strays });
+        ASF.applySelection?.(nav);
+      }
+
+      // If our tree was wiped, rebuild; if only strays were added, pruning is enough.
+      if (!nav?.querySelector("." + ASF.FOLDER_CLASS)) {
+        markPending(nav);
+        scheduleRebuild("mutation");
+      } else if (ASF.hasStrayNativeWorkflows?.(nav)) {
+        markPending(nav);
+        scheduleRebuild("mutation");
       }
     });
     observer.observe(document.documentElement, {

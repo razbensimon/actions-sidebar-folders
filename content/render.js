@@ -107,69 +107,49 @@
   }
 
   /**
-   * GitHub/Turbo often re-injects flat workflow <li>s beside our folders.
-   * Remove those strays; keep rows we marked with data-asf-leaf (incl. root leaves).
+   * GitHub/Turbo often re-injects flat workflow <li>s (top-level or into our
+   * folder lists). Remove every unmarked row under the nav.
    */
   function pruneStrayNativeWorkflows(nav) {
     if (!nav) return 0;
     let removed = 0;
-    const listEl = findWorkflowList(nav);
-    const roots = listEl ? [listEl] : [];
-    // Also scan direct workflow groups under nav in case listEl is nested oddly.
-    nav.querySelectorAll("ul.ActionListWrap").forEach((ul) => {
-      if (!ul.classList.contains(NEST_CLASS)) roots.push(ul);
-    });
-
-    for (const root of new Set(roots)) {
-      [...root.children].forEach((child) => {
-        if (
-          child.matches?.(
-            'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
-          )
-        ) {
-          child.remove();
-          removed += 1;
-          return;
-        }
-        if (
-          child.matches?.(
-            "[data-target='nav-list-group.showMoreItem'], [src*='workflows_partial']"
-          )
-        ) {
-          child.remove();
-          removed += 1;
-          return;
-        }
-        const text = (child.textContent || "").replace(/\s+/g, " ").trim();
-        if (/^Show more workflows/i.test(text)) {
-          child.remove();
-          removed += 1;
-        }
+    nav
+      .querySelectorAll(
+        'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
+      )
+      .forEach((el) => {
+        el.remove();
+        removed += 1;
       });
-    }
-
-    if (typeof globalThis.ASF?.removeShowMoreControls === "function") {
-      globalThis.ASF.removeShowMoreControls(nav);
-    }
+    nav
+      .querySelectorAll(
+        "[data-target='nav-list-group.showMoreItem'], [src*='workflows_partial']"
+      )
+      .forEach((el) => {
+        el.remove();
+        removed += 1;
+      });
+    nav.querySelectorAll("button, a, span, div").forEach((el) => {
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (/^Show more workflows/i.test(text) && text.length < 40) {
+        const row =
+          el.closest("[data-target='nav-list-group.showMoreItem']") ||
+          el.closest(".ActionListItem") ||
+          el;
+        if (row.isConnected) {
+          row.remove();
+          removed += 1;
+        }
+      }
+    });
     return removed;
   }
 
   function hasStrayNativeWorkflows(nav) {
     if (!nav) return false;
-    const listEl = findWorkflowList(nav);
-    if (
-      listEl &&
-      [...listEl.children].some((c) =>
-        c.matches?.(
-          'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
-        )
-      )
-    ) {
-      return true;
-    }
     return Boolean(
       nav.querySelector(
-        `ul.ActionListWrap:not(.${NEST_CLASS}) > li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])`
+        'li[data-test-selector="workflow-rendered"]:not([data-asf-leaf])'
       )
     );
   }
@@ -209,15 +189,18 @@
     clearActiveStates(nav);
     let matched = false;
     nav
-      .querySelectorAll('li[data-test-selector="workflow-rendered"]')
+      .querySelectorAll(
+        'li[data-test-selector="workflow-rendered"][data-asf-leaf]'
+      )
       .forEach((li) => {
-        const href = li.querySelector("a.ActionListContent")?.getAttribute("href");
+        const href = li
+          .querySelector("a.ActionListContent")
+          ?.getAttribute("href");
         if (isActivePath(href)) {
           markLeafActive(li);
           matched = true;
         }
       });
-    // Fall back to All workflows when no leaf matches (e.g. /actions hub).
     if (!matched) {
       const all = nav.querySelector('li[data-item-id="all_workflows"]');
       if (all) {
