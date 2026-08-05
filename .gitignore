@@ -20,8 +20,7 @@ pnpm-debug.log*
 dist/
 build/
 
-# Local store screenshot drafts (keep README under store/screenshots/)
-store/screenshots/*.png
-store/screenshots/*.jpg
-store/screenshots/*.jpeg
-store/screenshots/*.webp
+# Extra store screenshot drafts (canonical sidebar-folders.png is tracked)
+store/screenshots/*
+!store/screenshots/README.md
+!store/screenshots/sidebar-folders.png

@@ -92,13 +92,13 @@ Do **not** justify `http://127.0.0.1:3927/*` — it is removed by `pnpm package`
 
 Chrome needs **at least one** image at **1280×800** or **640×400**.
 
-1. Open a busy Actions page (many slash-named workflows) with the extension loaded from the **repo root**.
-2. Capture the left sidebar showing folders between “All workflows” and “Management”.
-3. Save into `store/screenshots/`:
-   - `store/screenshots/01-sidebar-folders-1280x800.png` (preferred)
-4. Optional second shot: Options page (`chrome-extension://…/options/options.html`).
+Tracked asset (also shown in the README):
 
-Tips: use the full browser window or a clipped 1280×800 region; dark or light GitHub theme both fine; avoid unrelated personal notifications in frame.
+- [`store/screenshots/sidebar-folders.png`](./store/screenshots/sidebar-folders.png) — **1280×800**, UI letterboxed
+
+Dashboard → Store listing → Screenshots → upload that file.
+
+Optional extra: Options page at 1280×800 or 640×400.
 
 ## Reviewer notes (optional dashboard field)
 

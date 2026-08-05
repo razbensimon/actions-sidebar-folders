@@ -4,6 +4,8 @@ Chrome extension (Manifest V3) that nests GitHub Actions sidebar workflows by sl
 
 Independently implemented from scratch. Inspired by the general idea of folder-grouping slash-named workflows — not a fork of any existing extension.
 
+![Actions sidebar with nested workflow folders](store/screenshots/sidebar-folders.png)
+
 ## Install (Load unpacked)
 
 1. Clone or download this repository
