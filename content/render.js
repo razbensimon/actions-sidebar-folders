@@ -8,8 +8,9 @@
     module.exports = api;
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
-  const FOLDER_CLASS = "asf-folder";
-  const FOLDER_OPEN = "asf-folder--open";
+  const FOLDER_CLASS = "asf-folder-group";
+  const FOLDER_HEADER = "asf-folder";
+  const FOLDER_OPEN = "asf-folder-group--open";
   const NEST_CLASS = "asf-folder-children";
   const ROOT_MARK = "data-asf-rooted";
   const ACTIVE_CLASS = "ActionListItem--navActive";
@@ -64,18 +65,6 @@
     if (label) label.textContent = displayName;
   }
 
-  function ensureLeafGutter(li) {
-    const anchor = li.querySelector("a.ActionListContent");
-    if (!anchor || anchor.querySelector(".asf-leaf-gutter")) return;
-    // Nested leaves only — root leaves stay flush with GitHub’s list.
-    if (!li.closest("." + NEST_CLASS)) return;
-    const gutter = document.createElement("span");
-    gutter.className = "asf-leaf-gutter";
-    gutter.setAttribute("aria-hidden", "true");
-    anchor.prepend(gutter);
-    anchor.classList.add("asf-leaf-link");
-  }
-
   function ensureLeafElement(leaf) {
     const item = leaf.item;
     let li = item.element;
@@ -87,7 +76,7 @@
         li.setAttribute("data-test-selector", "workflow-rendered");
         li.className = "actions-workflow-list-item ActionListItem";
         const a = document.createElement("a");
-        a.className = "ActionListContent asf-leaf-link";
+        a.className = "ActionListContent";
         a.href = item.href || "#";
         const span = document.createElement("span");
         span.className = "ActionListItem-label ActionListItem-label--truncate";
@@ -97,8 +86,10 @@
       }
       item.element = li;
     }
+    // Drop previous flex-gutter hacks if reusing a node.
+    li.querySelector(".asf-leaf-gutter")?.remove();
+    li.querySelector("a.ActionListContent")?.classList.remove("asf-leaf-link");
     setLeafLabel(li, leaf.name);
-    ensureLeafGutter(li);
     li.setAttribute("data-asf-leaf", "1");
     if (item.name) li.setAttribute("data-asf-full-name", item.name);
     if (item.disabled) li.setAttribute("data-asf-disabled", "1");
@@ -211,9 +202,15 @@
   }
 
   function createFolderElement(folder, settings) {
-    const li = document.createElement("li");
-    li.className = `ActionListItem ${FOLDER_CLASS}`;
-    li.setAttribute("data-asf-folder", folder.name);
+    // Wrapper is NOT ActionListItem — nesting ul inside ActionListItem breaks
+    // Primer's active indicator / padding. Header row is a normal ActionListItem.
+    const group = document.createElement("li");
+    group.className = FOLDER_CLASS;
+    group.setAttribute("data-asf-folder", folder.name);
+    group.setAttribute("role", "presentation");
+
+    const header = document.createElement("div");
+    header.className = `ActionListItem ${FOLDER_HEADER}`;
 
     const button = document.createElement("button");
     button.type = "button";
@@ -234,7 +231,8 @@
     count.textContent = String(countLeaves(folder));
 
     button.append(chevronWrap, label, count);
-    li.appendChild(button);
+    header.appendChild(button);
+    group.appendChild(header);
 
     const childList = document.createElement("ul");
     childList.className = `ActionListWrap ${NEST_CLASS}`;
@@ -248,19 +246,19 @@
       }
     }
 
-    li.appendChild(childList);
+    group.appendChild(childList);
 
     const forceOpen = pathContainsActive(folder);
     const open = forceOpen || settings.collapseFoldersByDefault === false;
-    setFolderOpen(li, open);
+    setFolderOpen(group, open);
 
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      setFolderOpen(li, !li.classList.contains(FOLDER_OPEN));
+      setFolderOpen(group, !group.classList.contains(FOLDER_OPEN));
     });
 
-    return li;
+    return group;
   }
 
   function countLeaves(node) {
@@ -268,10 +266,10 @@
     return node.children.reduce((sum, child) => sum + countLeaves(child), 0);
   }
 
-  function setFolderOpen(li, open) {
-    const button = li.querySelector(":scope > .asf-folder-toggle");
-    const childList = li.querySelector(":scope > ." + NEST_CLASS);
-    li.classList.toggle(FOLDER_OPEN, open);
+  function setFolderOpen(group, open) {
+    const button = group.querySelector(":scope > .asf-folder > .asf-folder-toggle");
+    const childList = group.querySelector(":scope > ." + NEST_CLASS);
+    group.classList.toggle(FOLDER_OPEN, open);
     if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
     if (childList) childList.hidden = !open;
   }
