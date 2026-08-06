@@ -14,7 +14,7 @@ pnpm package
 
 - **Load unpacked (dev):** repo root (includes `http://127.0.0.1:3927/*` for `pnpm dev:logs`)
 - **Store upload:** `dist/actions-sidebar-folders-*.zip` only
-- **GitHub Release:** attach both `.zip` and `.crx` (CRX signed with `keys/extension.pem`)
+- **GitHub Release:** attach both `.zip` and `.crx` (CRX signed with `~/.config/actions-sidebar-folders/extension.pem`)
 
 ## Store listing
 

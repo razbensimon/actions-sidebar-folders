@@ -26,7 +26,7 @@ Dev (this repo) keeps `http://127.0.0.1:3927/*` so [Debug mode](#development) ca
 pnpm release:zip   # test + write dist/actions-sidebar-folders-<version>.{zip,crx}
 ```
 
-CRX signing key defaults to `keys/extension.pem` (gitignored; created on first pack). Override with `ASF_CRX_KEY_PATH`. Back up the PEM — losing it changes the extension ID.
+CRX signing key defaults to `~/.config/actions-sidebar-folders/extension.pem` (outside the Load unpacked root — Chrome warns if a `.pem` sits in the extension folder). Override with `ASF_CRX_KEY_PATH`. Back up the PEM — losing it changes the extension ID.
 
 Listing copy, privacy URL, permission justifications, and screenshot checklist: **[STORE.md](./STORE.md)**.  
 Privacy policy: **[PRIVACY.md](./PRIVACY.md)**.  

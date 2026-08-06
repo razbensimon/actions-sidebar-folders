@@ -5,8 +5,10 @@
  * Source of truth in git keeps the local debug host permission for Load unpacked
  * + `pnpm dev:logs`. The packaged manifest strips that host only.
  *
- * CRX is signed with a persistent PEM (default: keys/extension.pem). Override with
- * ASF_CRX_KEY_PATH. The key is gitignored — keep a backup; losing it changes the ID.
+ * CRX is signed with a persistent PEM (default:
+ * ~/.config/actions-sidebar-folders/extension.pem — outside the Load unpacked
+ * root so Chrome never ships the private key). Override with ASF_CRX_KEY_PATH.
+ * Keep a backup; losing it changes the extension ID.
  */
 import { spawnSync } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
@@ -17,7 +19,9 @@ import {
   rmSync,
   writeFileSync,
   existsSync,
+  renameSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import crx3 from "crx3";
@@ -25,7 +29,13 @@ import crx3 from "crx3";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const STAGE = join(DIST, "extension");
-const DEFAULT_KEY = join(ROOT, "keys", "extension.pem");
+const LEGACY_KEY = join(ROOT, "keys", "extension.pem");
+const DEFAULT_KEY = join(
+  homedir(),
+  ".config",
+  "actions-sidebar-folders",
+  "extension.pem"
+);
 
 /** Hosts kept only for local Load unpacked / debug bridge — never ship to store. */
 const DEV_ONLY_HOST_PERMISSIONS = new Set(["http://127.0.0.1:3927/*"]);
@@ -112,7 +122,21 @@ function zipPackage(version) {
 }
 
 function resolveKeyPath() {
-  return process.env.ASF_CRX_KEY_PATH || DEFAULT_KEY;
+  if (process.env.ASF_CRX_KEY_PATH) return process.env.ASF_CRX_KEY_PATH;
+  // Migrate legacy in-repo key out of the Load unpacked root (Chrome warns on *.pem).
+  if (existsSync(LEGACY_KEY) && !existsSync(DEFAULT_KEY)) {
+    mkdirSync(dirname(DEFAULT_KEY), { recursive: true });
+    renameSync(LEGACY_KEY, DEFAULT_KEY);
+    try {
+      rmSync(join(ROOT, "keys"), { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    console.log(
+      `package-extension: moved signing key ${LEGACY_KEY} → ${DEFAULT_KEY}`
+    );
+  }
+  return DEFAULT_KEY;
 }
 
 /** Ensure a PEM exists before crx3 runs (avoids its first-run ENOENT noise). */
