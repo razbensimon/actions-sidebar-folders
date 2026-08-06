@@ -39,6 +39,7 @@
         "content/disabled.js",
         "content/fetch.js",
         "content/render.js",
+        "content/search.js",
         "content/content.js"
       ],
       "css": ["content/content.css"],

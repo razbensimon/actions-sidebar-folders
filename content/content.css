@@ -85,3 +85,66 @@ nav[aria-label="Actions Workflows"]
   > .ActionListContent {
   font-weight: 600;
 }
+
+/* Search box above the folder tree */
+.asf-search {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 2px 8px 6px;
+}
+
+.asf-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.asf-search-icon {
+  position: absolute;
+  left: 8px;
+  pointer-events: none;
+  color: var(--fgColor-muted, var(--color-fg-muted));
+}
+
+.asf-search-input {
+  width: 100%;
+  padding: 5px 8px 5px 30px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fgColor-default, var(--color-fg-default));
+  background-color: var(--bgColor-default, var(--color-canvas-default));
+  border: 1px solid var(--borderColor-default, var(--color-border-default));
+  border-radius: 6px;
+  outline: none;
+}
+
+.asf-search-input::placeholder {
+  color: var(--fgColor-muted, var(--color-fg-muted));
+}
+
+.asf-search-input:focus {
+  border-color: var(--borderColor-accent-emphasis, var(--color-accent-emphasis));
+  box-shadow: 0 0 0 1px
+    var(--borderColor-accent-emphasis, var(--color-accent-emphasis));
+}
+
+/* Filtered-out rows / folders */
+.asf-search-hidden {
+  display: none !important;
+}
+
+/* Match highlight inside labels */
+mark.asf-search-mark {
+  padding: 0;
+  background-color: var(--bgColor-attention-muted, var(--color-attention-subtle));
+  color: inherit;
+  font-weight: 600;
+  border-radius: 2px;
+}
+
+.asf-search-empty {
+  list-style: none;
+  padding: 6px 16px;
+  color: var(--fgColor-muted, var(--color-fg-muted));
+  font-size: 12px;
+}

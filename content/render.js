@@ -428,6 +428,10 @@
     pruneStrayNativeWorkflows(nav);
     collapseAdjacentDividers(nav);
     globalThis.ASF?.removeShowMoreControls?.(nav);
+    // Search box lives outside listEl so it survives repaints; re-apply the
+    // active query since leaf labels were just reset to plain text.
+    globalThis.ASF?.ensureSearchBox?.(nav, listEl);
+    globalThis.ASF?.applySearchFilter?.(nav);
 
     return true;
   }
@@ -465,6 +469,7 @@
     FOLDER_CLASS,
     findWorkflowList,
     renderTree,
+    setFolderOpen,
     pathContainsActive,
     applySelection,
     pruneStrayNativeWorkflows,
