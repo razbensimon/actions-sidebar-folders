@@ -33,6 +33,7 @@ Actions Sidebar Folders nests workflows in the GitHub Actions left sidebar when 
 Features
 • Up to 3 folder levels from "/" in the workflow name
 • Extra path segments stay on the leaf label
+• Filter box above the tree with match highlighting
 • Disabled workflows: hide (default), put in a Disabled folder, or leave flat
 • Collapse folders by default (the path to the active workflow still expands)
 • Works with GitHub’s Turbo / SPA navigation
