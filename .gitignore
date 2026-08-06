@@ -21,7 +21,8 @@ pnpm-debug.log*
 dist/
 build/
 
-# Extra store screenshot drafts (canonical sidebar-folders.png is tracked)
+# Extra store screenshot drafts (canonical README/listing PNGs are tracked)
 store/screenshots/*
 !store/screenshots/README.md
 !store/screenshots/sidebar-folders.png
+!store/screenshots/sidebar-filter.png

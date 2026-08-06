@@ -93,11 +93,12 @@ Do **not** justify `http://127.0.0.1:3927/*` — it is removed by `pnpm package`
 
 Chrome needs **at least one** image at **1280×800** or **640×400**.
 
-Tracked asset (also shown in the README):
+Tracked assets (also shown in the README):
 
 - [`store/screenshots/sidebar-folders.png`](./store/screenshots/sidebar-folders.png) — **1280×800**, UI letterboxed
+- [`store/screenshots/sidebar-filter.png`](./store/screenshots/sidebar-filter.png) — filter box with match highlighting (README)
 
-Dashboard → Store listing → Screenshots → upload that file.
+Dashboard → Store listing → Screenshots → upload `sidebar-folders.png`.
 
 Optional extra: Options page at 1280×800 or 640×400.
 

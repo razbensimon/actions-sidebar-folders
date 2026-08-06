@@ -6,6 +6,8 @@ Independently implemented from scratch. Inspired by the general idea of folder-g
 
 ![Actions sidebar with nested workflow folders](store/screenshots/sidebar-folders.png)
 
+![Filter box matching and highlighting workflows](store/screenshots/sidebar-filter.png)
+
 ## Install (Load unpacked)
 
 1. Clone or download this repository
