@@ -38,6 +38,7 @@ Features
 • Filter box above the tree with match highlighting
 • Disabled workflows: hide (default), put in a Disabled folder, or leave flat
 • Collapse folders by default (the path to the active workflow still expands)
+• Optional folder for GitHub’s managed Dependabot Updates / Dependency Graph
 • Works with GitHub’s Turbo / SPA navigation
 • Options page only — no popup
 • No analytics, no PAT, no third-party servers

@@ -40,6 +40,7 @@ Right-click the extension → **Options** (or Details → Extension options):
 |---|---|
 | Disabled workflows: Hide / Folder / Leave flat | **Hide** |
 | Collapse folders by default | **On** (path to the active workflow still expands) |
+| Group Dependabot workflows | **On** (managed Dependabot Updates / Dependency Graph under **Dependabot**) |
 | Debug mode | **Off** |
 
 Max folder depth is fixed at **3**. Extra `/` segments stay on the leaf label (`CI / Lint / JS / Unit / Foo` → folders `CI` → `Lint` → `JS`, leaf `Unit / Foo`).
@@ -48,6 +49,7 @@ Max folder depth is fixed at **3**. Extra `/` segments stay on the leaf label (`
 
 - Reads workflow rows from the Actions sidebar and GitHub’s same-origin `workflows_partial` HTML (your session cookies; **no PAT**)
 - Splits names on `/` (whitespace around `/` is fine)
+- Optionally groups GitHub’s managed Dependabot Updates and Dependency Graph under a **Dependabot** folder (toggle in Options)
 - Filter box above the tree matches the full name (`unit` finds `CI / Test / Unit`), space-separated terms are AND-ed, matches are highlighted, and folders holding matches expand until the query is cleared
 - Re-applies on Turbo / SPA navigations
 - If fetch/parse fails, GitHub’s native sidebar is left alone
