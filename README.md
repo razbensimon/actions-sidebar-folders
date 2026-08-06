@@ -16,15 +16,17 @@ Independently implemented from scratch. Inspired by the general idea of folder-g
 4. Click **Load unpacked** and select this folder
 5. Open a repo’s **Actions** tab on github.com
 
-For a prebuilt package, see [GitHub Releases](https://github.com/razbensimon/actions-sidebar-folders/releases) (use the zip from `pnpm package`, which omits the local debug host permission).
+For a prebuilt package, see [GitHub Releases](https://github.com/razbensimon/actions-sidebar-folders/releases) (zip and CRX from `pnpm package`, which omit the local debug host permission). Consumer Chrome usually blocks CRX sideload — prefer the zip + Load unpacked, or the Web Store.
 
 ## Chrome Web Store
 
-Dev (this repo) keeps `http://127.0.0.1:3927/*` so [Debug mode](#development) can reach `pnpm dev:logs`. Store/release zips **strip** that host.
+Dev (this repo) keeps `http://127.0.0.1:3927/*` so [Debug mode](#development) can reach `pnpm dev:logs`. Store/release packages **strip** that host.
 
 ```bash
-pnpm release:zip   # test + write dist/actions-sidebar-folders-<version>.zip
+pnpm release:zip   # test + write dist/actions-sidebar-folders-<version>.{zip,crx}
 ```
+
+CRX signing key defaults to `keys/extension.pem` (gitignored; created on first pack). Override with `ASF_CRX_KEY_PATH`. Back up the PEM — losing it changes the extension ID.
 
 Listing copy, privacy URL, permission justifications, and screenshot checklist: **[STORE.md](./STORE.md)**.  
 Privacy policy: **[PRIVACY.md](./PRIVACY.md)**.  
