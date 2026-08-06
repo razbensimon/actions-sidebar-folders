@@ -10,6 +10,11 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const MAX_FOLDER_DEPTH = 3;
 
+  const DEPENDABOT_WORKFLOW_PATHS = new Set([
+    "dynamic/dependabot/dependabot-updates",
+    "dynamic/dependabot/update-graph",
+  ]);
+
   /**
    * @typedef {{ id: string, name: string, href: string, disabled: boolean, element?: Element }} WorkflowItem
    * @typedef {{ type: 'folder', name: string, children: Array<TreeNode> }} FolderNode
@@ -26,6 +31,36 @@
       .split("/")
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
+  }
+
+  /**
+   * @param {string} value
+   * @returns {string | null}
+   */
+  function extractDependabotWorkflowPath(value) {
+    const s = String(value || "");
+    const fromHref = s.match(
+      /\/actions\/workflows\/(dynamic\/dependabot\/[^/?#]+)/
+    );
+    if (fromHref) return fromHref[1];
+    if (DEPENDABOT_WORKFLOW_PATHS.has(s)) return s;
+    return null;
+  }
+
+  /**
+   * Virtual slash path used only for nesting. Keeps display names for leaves.
+   * @param {WorkflowItem} item
+   * @returns {string}
+   */
+  function resolveGroupingName(item) {
+    const path =
+      extractDependabotWorkflowPath(item.href) ||
+      extractDependabotWorkflowPath(item.id);
+    if (path && DEPENDABOT_WORKFLOW_PATHS.has(path)) {
+      const leaf = String(item.name || "").trim() || path.split("/").pop();
+      return `Dependabot / ${leaf}`;
+    }
+    return item.name;
   }
 
   /**
@@ -69,7 +104,7 @@
     }
 
     for (const item of items) {
-      const parts = splitPath(item.name);
+      const parts = splitPath(resolveGroupingName(item));
       if (parts.length <= 1) {
         rootLeaves.push({
           type: "leaf",
@@ -130,6 +165,7 @@
   return {
     MAX_FOLDER_DEPTH,
     splitPath,
+    resolveGroupingName,
     buildTree,
   };
 });
