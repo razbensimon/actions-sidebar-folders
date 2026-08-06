@@ -16,11 +16,12 @@ describe("splitPath", () => {
 
 describe("resolveGroupingName", () => {
   it("maps Dependabot platform hrefs under Dependabot / <display name>", () => {
+    // Sidebar hrefs omit the API "dynamic/" prefix.
     assert.equal(
       resolveGroupingName({
         id: "1",
         name: "Dependabot Updates",
-        href: "/o/r/actions/workflows/dynamic/dependabot/dependabot-updates",
+        href: "/o/r/actions/workflows/dependabot/dependabot-updates",
         disabled: false,
       }),
       "Dependabot / Dependabot Updates"
@@ -29,10 +30,22 @@ describe("resolveGroupingName", () => {
       resolveGroupingName({
         id: "2",
         name: "Dependency Graph",
-        href: "/o/r/actions/workflows/dynamic/dependabot/update-graph",
+        href: "/o/r/actions/workflows/dependabot/update-graph",
         disabled: false,
       }),
       "Dependabot / Dependency Graph"
+    );
+  });
+
+  it("also accepts API-style dynamic/ paths", () => {
+    assert.equal(
+      resolveGroupingName({
+        id: "1",
+        name: "Dependabot Updates",
+        href: "/o/r/actions/workflows/dynamic/dependabot/dependabot-updates",
+        disabled: false,
+      }),
+      "Dependabot / Dependabot Updates"
     );
   });
 
@@ -110,13 +123,13 @@ describe("buildTree", () => {
       {
         id: "1",
         name: "Dependabot Updates",
-        href: "/o/r/actions/workflows/dynamic/dependabot/dependabot-updates",
+        href: "/o/r/actions/workflows/dependabot/dependabot-updates",
         disabled: false,
       },
       {
         id: "2",
         name: "Dependency Graph",
-        href: "/o/r/actions/workflows/dynamic/dependabot/update-graph",
+        href: "/o/r/actions/workflows/dependabot/update-graph",
         disabled: false,
       },
       {
@@ -139,7 +152,7 @@ describe("buildTree", () => {
     assert.equal(dep.children[0].item.name, "Dependabot Updates");
     assert.equal(
       dep.children[0].item.href,
-      "/o/r/actions/workflows/dynamic/dependabot/dependabot-updates"
+      "/o/r/actions/workflows/dependabot/dependabot-updates"
     );
   });
 });

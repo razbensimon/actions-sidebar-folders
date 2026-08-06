@@ -11,6 +11,9 @@
   const MAX_FOLDER_DEPTH = 3;
 
   const DEPENDABOT_WORKFLOW_PATHS = new Set([
+    "dependabot/dependabot-updates",
+    "dependabot/update-graph",
+    // API workflow.path includes a "dynamic/" prefix; sidebar hrefs omit it.
     "dynamic/dependabot/dependabot-updates",
     "dynamic/dependabot/update-graph",
   ]);
@@ -40,7 +43,7 @@
   function extractDependabotWorkflowPath(value) {
     const s = String(value || "");
     const fromHref = s.match(
-      /\/actions\/workflows\/(dynamic\/dependabot\/[^/?#]+)/
+      /\/actions\/workflows\/((?:dynamic\/)?dependabot\/[^/?#]+)/
     );
     if (fromHref) return fromHref[1];
     if (DEPENDABOT_WORKFLOW_PATHS.has(s)) return s;
