@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * Build a Chrome Web Store / GitHub Release zip.
+ * Build Chrome Web Store / GitHub Release zip + CRX.
  *
  * Source of truth in git keeps the local debug host permission for Load unpacked
  * + `pnpm dev:logs`. The packaged manifest strips that host only.
+ *
+ * CRX is signed with a persistent PEM (default: keys/extension.pem). Override with
+ * ASF_CRX_KEY_PATH. The key is gitignored — keep a backup; losing it changes the ID.
  */
 import { spawnSync } from "node:child_process";
+import { generateKeyPairSync } from "node:crypto";
 import {
   cpSync,
   mkdirSync,
@@ -16,10 +20,12 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import crx3 from "crx3";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const STAGE = join(DIST, "extension");
+const DEFAULT_KEY = join(ROOT, "keys", "extension.pem");
 
 /** Hosts kept only for local Load unpacked / debug bridge — never ship to store. */
 const DEV_ONLY_HOST_PERMISSIONS = new Set(["http://127.0.0.1:3927/*"]);
@@ -105,22 +111,73 @@ function zipPackage(version) {
   return { zipName, zipPath };
 }
 
-function main() {
+function resolveKeyPath() {
+  return process.env.ASF_CRX_KEY_PATH || DEFAULT_KEY;
+}
+
+/** Ensure a PEM exists before crx3 runs (avoids its first-run ENOENT noise). */
+function ensureSigningKey(keyPath) {
+  if (existsSync(keyPath)) return false;
+  mkdirSync(dirname(keyPath), { recursive: true });
+  const { privateKey } = generateKeyPairSync("rsa", {
+    modulusLength: 4096,
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
+  writeFileSync(keyPath, privateKey, { mode: 0o600 });
+  return true;
+}
+
+async function crxPackage(version) {
+  const keyPath = resolveKeyPath();
+  mkdirSync(dirname(keyPath), { recursive: true });
+  const createdKey = ensureSigningKey(keyPath);
+  const crxName = `actions-sidebar-folders-${version}.crx`;
+  const crxPath = join(DIST, crxName);
+  rmSync(crxPath, { force: true });
+
+  await crx3([join(STAGE, "manifest.json")], {
+    keyPath,
+    crxPath,
+  });
+
+  if (!existsSync(crxPath)) fail(`crx not written: ${crxPath}`);
+  return { crxName, crxPath, keyPath, createdKey };
+}
+
+async function main() {
   mkdirSync(DIST, { recursive: true });
   copyTree();
   const manifest = writeStoreManifest();
   const { zipName, zipPath } = zipPackage(manifest.version);
+  const { crxName, crxPath, keyPath, createdKey } = await crxPackage(
+    manifest.version
+  );
 
   console.log("");
   console.log(`Packaged store build → ${zipPath}`);
+  console.log(`Packaged CRX         → ${crxPath}`);
   console.log(`  version: ${manifest.version}`);
   console.log(`  host_permissions: ${JSON.stringify(manifest.host_permissions)}`);
   console.log(
     `  (git manifest still includes ${[...DEV_ONLY_HOST_PERMISSIONS].join(", ")} for local debug)`
   );
+  console.log(`  signing key: ${keyPath}${createdKey ? " (created)" : ""}`);
+  if (createdKey) {
+    console.log(
+      "  Back up this PEM — losing it changes the extension ID on the next pack."
+    );
+  }
   console.log("");
-  console.log("Upload this zip to the Chrome Web Store / attach to a GitHub Release.");
+  console.log(
+    `Upload ${zipName} / ${crxName} to the Chrome Web Store or attach to a GitHub Release.`
+  );
+  console.log(
+    "Note: consumer Chrome usually blocks CRX sideload; zip + Load unpacked remains the reliable path."
+  );
   console.log(`Load unpacked for daily work: use the repo root (not dist/).`);
 }
 
-main();
+main().catch((err) => {
+  fail(err?.stack || String(err));
+});

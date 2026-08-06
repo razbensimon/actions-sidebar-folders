@@ -9,10 +9,12 @@ Package with `pnpm package` (strips the local debug host; git keeps it for Load 
 pnpm test
 pnpm package
 # → dist/actions-sidebar-folders-<version>.zip
+# → dist/actions-sidebar-folders-<version>.crx
 ```
 
 - **Load unpacked (dev):** repo root (includes `http://127.0.0.1:3927/*` for `pnpm dev:logs`)
-- **Store / GitHub Release asset:** `dist/actions-sidebar-folders-*.zip` only
+- **Store upload:** `dist/actions-sidebar-folders-*.zip` only
+- **GitHub Release:** attach both `.zip` and `.crx` (CRX signed with `keys/extension.pem`)
 
 ## Store listing
 

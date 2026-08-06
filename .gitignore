@@ -20,6 +20,7 @@ pnpm-debug.log*
 *.zip
 dist/
 build/
+keys/
 
 # Extra store screenshot drafts (canonical README/listing PNGs are tracked)
 store/screenshots/*
