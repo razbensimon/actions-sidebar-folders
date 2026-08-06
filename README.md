@@ -44,6 +44,7 @@ Max folder depth is fixed at **3**. Extra `/` segments stay on the leaf label (`
 
 - Reads workflow rows from the Actions sidebar and GitHub’s same-origin `workflows_partial` HTML (your session cookies; **no PAT**)
 - Splits names on `/` (whitespace around `/` is fine)
+- Filter box above the tree matches the full name (`unit` finds `CI / Test / Unit`), space-separated terms are AND-ed, matches are highlighted, and folders holding matches expand until the query is cleared
 - Re-applies on Turbo / SPA navigations
 - If fetch/parse fails, GitHub’s native sidebar is left alone
 
@@ -59,7 +60,13 @@ No analytics. No third-party servers.
 ```bash
 pnpm test
 pnpm dev:logs   # optional: stream [ASF] logs to terminal + .asf-debug.log
+pnpm dev:sync   # pull this checkout, then reload open Actions tabs
 ```
+
+`pnpm dev:sync` is for the clone Chrome has loaded unpacked: it fast-forwards the
+checkout, prints what changed, and refreshes any open Actions tabs. Chrome only
+re-reads extension files when the extension itself is reloaded, so still click ⟳
+(or Options → **Reload extension now**) afterwards.
 
 ### Fast local loop
 
