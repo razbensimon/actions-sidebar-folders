@@ -72,6 +72,21 @@ describe("resolveGroupingName", () => {
       "CI / Test"
     );
   });
+
+  it("skips Dependabot grouping when disabled", () => {
+    assert.equal(
+      resolveGroupingName(
+        {
+          id: "1",
+          name: "Dependabot Updates",
+          href: "/o/r/actions/workflows/dependabot/dependabot-updates",
+          disabled: false,
+        },
+        { groupDependabotWorkflows: false }
+      ),
+      "Dependabot Updates"
+    );
+  });
 });
 
 describe("buildTree", () => {
@@ -153,6 +168,30 @@ describe("buildTree", () => {
     assert.equal(
       dep.children[0].item.href,
       "/o/r/actions/workflows/dependabot/dependabot-updates"
+    );
+  });
+
+  it("leaves Dependabot workflows flat when grouping is disabled", () => {
+    const tree = buildTree(
+      [
+        {
+          id: "1",
+          name: "Dependabot Updates",
+          href: "/o/r/actions/workflows/dependabot/dependabot-updates",
+          disabled: false,
+        },
+        {
+          id: "2",
+          name: "CI / Test",
+          href: "/o/r/actions/workflows/ci.yml",
+          disabled: false,
+        },
+      ],
+      { groupDependabotWorkflows: false }
+    );
+    assert.deepEqual(
+      tree.map((n) => n.name),
+      ["CI", "Dependabot Updates"]
     );
   });
 });

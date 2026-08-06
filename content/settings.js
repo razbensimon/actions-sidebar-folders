@@ -12,6 +12,7 @@
   const DEFAULTS = Object.freeze({
     disabledMode: "hide", // hide | folder | flat
     collapseFoldersByDefault: true,
+    groupDependabotWorkflows: true,
     debugMode: false,
   });
 
@@ -25,6 +26,10 @@
     return {
       disabledMode: normalizeDisabledMode(stored.disabledMode),
       collapseFoldersByDefault: Boolean(stored.collapseFoldersByDefault),
+      groupDependabotWorkflows:
+        typeof stored.groupDependabotWorkflows === "boolean"
+          ? stored.groupDependabotWorkflows
+          : DEFAULTS.groupDependabotWorkflows,
       debugMode: Boolean(stored.debugMode),
     };
   }

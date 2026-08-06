@@ -53,9 +53,12 @@
   /**
    * Virtual slash path used only for nesting. Keeps display names for leaves.
    * @param {WorkflowItem} item
+   * @param {{ groupDependabotWorkflows?: boolean }} [opts]
    * @returns {string}
    */
-  function resolveGroupingName(item) {
+  function resolveGroupingName(item, opts = {}) {
+    const groupDependabot = opts.groupDependabotWorkflows !== false;
+    if (!groupDependabot) return item.name;
     const path =
       extractDependabotWorkflowPath(item.href) ||
       extractDependabotWorkflowPath(item.id);
@@ -68,11 +71,14 @@
 
   /**
    * @param {WorkflowItem[]} items
-   * @param {{ maxDepth?: number }} [opts]
+   * @param {{ maxDepth?: number, groupDependabotWorkflows?: boolean }} [opts]
    * @returns {TreeNode[]}
    */
   function buildTree(items, opts = {}) {
     const maxDepth = opts.maxDepth ?? MAX_FOLDER_DEPTH;
+    const groupingOpts = {
+      groupDependabotWorkflows: opts.groupDependabotWorkflows,
+    };
 
     /** @type {FolderNode[]} */
     const rootFolders = [];
@@ -107,7 +113,7 @@
     }
 
     for (const item of items) {
-      const parts = splitPath(resolveGroupingName(item));
+      const parts = splitPath(resolveGroupingName(item, groupingOpts));
       if (parts.length <= 1) {
         rootLeaves.push({
           type: "leaf",

@@ -1,12 +1,14 @@
 const form = document.getElementById("settings-form");
 const statusEl = document.getElementById("status");
 const collapseEl = document.getElementById("collapseFoldersByDefault");
+const groupDependabotEl = document.getElementById("groupDependabotWorkflows");
 const debugEl = document.getElementById("debugMode");
 const reloadBtn = document.getElementById("reload-extension");
 
 const DEFAULTS = {
   disabledMode: "hide",
   collapseFoldersByDefault: true,
+  groupDependabotWorkflows: true,
   debugMode: false,
 };
 
@@ -25,6 +27,10 @@ async function load() {
   const radio = form.querySelector(`input[name="disabledMode"][value="${mode}"]`);
   if (radio) radio.checked = true;
   collapseEl.checked = Boolean(stored.collapseFoldersByDefault);
+  groupDependabotEl.checked =
+    typeof stored.groupDependabotWorkflows === "boolean"
+      ? stored.groupDependabotWorkflows
+      : DEFAULTS.groupDependabotWorkflows;
   debugEl.checked = Boolean(stored.debugMode);
 }
 
@@ -34,6 +40,7 @@ async function save() {
   await chrome.storage.sync.set({
     disabledMode,
     collapseFoldersByDefault: collapseEl.checked,
+    groupDependabotWorkflows: groupDependabotEl.checked,
     debugMode: debugEl.checked,
   });
   setStatus(

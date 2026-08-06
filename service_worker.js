@@ -4,6 +4,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   const defaults = {
     disabledMode: "hide",
     collapseFoldersByDefault: true,
+    groupDependabotWorkflows: true,
     debugMode: false,
   };
   const current = await chrome.storage.sync.get(defaults);
@@ -18,6 +19,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       typeof current.collapseFoldersByDefault === "boolean"
         ? current.collapseFoldersByDefault
         : defaults.collapseFoldersByDefault,
+    groupDependabotWorkflows:
+      typeof current.groupDependabotWorkflows === "boolean"
+        ? current.groupDependabotWorkflows
+        : defaults.groupDependabotWorkflows,
     debugMode:
       typeof current.debugMode === "boolean"
         ? current.debugMode

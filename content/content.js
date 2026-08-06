@@ -81,7 +81,9 @@
       items,
       settings.disabledMode
     );
-    const tree = ASF.buildTree(nestable);
+    const tree = ASF.buildTree(nestable, {
+      groupDependabotWorkflows: settings.groupDependabotWorkflows,
+    });
     const ok = ASF.renderTree(nav, tree, settings, disabledFolderItems);
     if (ok) {
       ASF.removeShowMoreControls?.(nav);
@@ -156,11 +158,14 @@
         items,
         settings.disabledMode
       );
-      const tree = ASF.buildTree(nestable);
+      const tree = ASF.buildTree(nestable, {
+        groupDependabotWorkflows: settings.groupDependabotWorkflows,
+      });
       const key = JSON.stringify({
         path: location.pathname,
         mode: settings.disabledMode,
         collapse: settings.collapseFoldersByDefault,
+        groupDependabot: settings.groupDependabotWorkflows,
         debug: settings.debugMode,
         ids: items.map((i) => i.id).sort(),
       });
@@ -302,6 +307,7 @@
       if (
         !changes.disabledMode &&
         !changes.collapseFoldersByDefault &&
+        !changes.groupDependabotWorkflows &&
         !changes.debugMode
       ) {
         return;
