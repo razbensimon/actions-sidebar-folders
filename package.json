@@ -1,6 +1,6 @@
 {
   "name": "actions-sidebar-folders",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Nest GitHub Actions sidebar workflows by slash-separated name prefixes",
   "scripts": {
