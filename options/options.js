@@ -2,6 +2,7 @@ const form = document.getElementById("settings-form");
 const statusEl = document.getElementById("status");
 const collapseEl = document.getElementById("collapseFoldersByDefault");
 const groupDependabotEl = document.getElementById("groupDependabotWorkflows");
+const showPinnedEl = document.getElementById("showPinnedAtTop");
 const debugEl = document.getElementById("debugMode");
 const reloadBtn = document.getElementById("reload-extension");
 
@@ -9,6 +10,7 @@ const DEFAULTS = {
   disabledMode: "hide",
   collapseFoldersByDefault: true,
   groupDependabotWorkflows: true,
+  showPinnedAtTop: true,
   debugMode: false,
 };
 
@@ -31,6 +33,10 @@ async function load() {
     typeof stored.groupDependabotWorkflows === "boolean"
       ? stored.groupDependabotWorkflows
       : DEFAULTS.groupDependabotWorkflows;
+  showPinnedEl.checked =
+    typeof stored.showPinnedAtTop === "boolean"
+      ? stored.showPinnedAtTop
+      : DEFAULTS.showPinnedAtTop;
   debugEl.checked = Boolean(stored.debugMode);
 }
 
@@ -41,6 +47,7 @@ async function save() {
     disabledMode,
     collapseFoldersByDefault: collapseEl.checked,
     groupDependabotWorkflows: groupDependabotEl.checked,
+    showPinnedAtTop: showPinnedEl.checked,
     debugMode: debugEl.checked,
   });
   setStatus(

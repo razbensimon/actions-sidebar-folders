@@ -74,6 +74,11 @@ nav[aria-label="Actions Workflows"] [src*="workflows_partial"] {
   box-sizing: border-box;
 }
 
+[data-asf-leaf][data-asf-pinned] .octicon-pin,
+[data-asf-leaf][data-asf-pinned] .octicon-pin-slash {
+  color: var(--fgColor-muted, var(--color-fg-muted));
+}
+
 /* Nested active state: keep indicator inside the indented row */
 .asf-folder-children > .ActionListItem {
   position: relative;

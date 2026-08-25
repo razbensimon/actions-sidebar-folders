@@ -42,8 +42,8 @@
   }
 
   function cacheKey(repo) {
-    // v3: invalidate caches that mixed href-ids with numeric workflow ids.
-    return `asf:workflows:v3:${repo.owner}/${repo.repo}`;
+    // v5: pin detection no longer treats hover pin controls as pinned.
+    return `asf:workflows:v5:${repo.owner}/${repo.repo}`;
   }
 
   function readCache(repo) {
@@ -69,6 +69,7 @@
         name: i.name,
         href: i.href,
         disabled: Boolean(i.disabled),
+        pinned: Boolean(i.pinned),
       }));
       sessionStorage.setItem(cacheKey(repo), JSON.stringify(slim));
     } catch {
@@ -84,7 +85,17 @@
     const tree = ASF.buildTree(nestable, {
       groupDependabotWorkflows: settings.groupDependabotWorkflows,
     });
-    const ok = ASF.renderTree(nav, tree, settings, disabledFolderItems);
+    const pinnedItems = ASF.selectPinnedItems(
+      [...nestable, ...disabledFolderItems],
+      settings.showPinnedAtTop
+    );
+    const ok = ASF.renderTree(
+      nav,
+      tree,
+      settings,
+      disabledFolderItems,
+      pinnedItems
+    );
     if (ok) {
       ASF.removeShowMoreControls?.(nav);
       markReady(nav);
@@ -166,8 +177,9 @@
         mode: settings.disabledMode,
         collapse: settings.collapseFoldersByDefault,
         groupDependabot: settings.groupDependabotWorkflows,
+        showPinned: settings.showPinnedAtTop,
         debug: settings.debugMode,
-        ids: items.map((i) => i.id).sort(),
+        ids: items.map((i) => `${i.id}:${i.pinned ? "p" : ""}`).sort(),
       });
 
       if (key === lastKey && nav.querySelector("." + ASF.FOLDER_CLASS)) {
@@ -308,6 +320,7 @@
         !changes.disabledMode &&
         !changes.collapseFoldersByDefault &&
         !changes.groupDependabotWorkflows &&
+        !changes.showPinnedAtTop &&
         !changes.debugMode
       ) {
         return;

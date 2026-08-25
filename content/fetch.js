@@ -16,6 +16,8 @@
   };
 
   const MAX_PARTIAL_PAGES = 50;
+  /** GitHub allows at most 5 pinned workflows per repository. */
+  const MAX_PINNED_WORKFLOWS = 5;
 
   function parseRepoFromLocation(pathname = location.pathname) {
     const parts = String(pathname).split("/").filter(Boolean);
@@ -45,6 +47,42 @@
     return false;
   }
 
+  function isPinnedElement(li) {
+    if (!li) return false;
+    // Every workflow row includes a hover pin/unpin control (octicon-pin).
+    // Only the always-visible trailing visual (or an "Unpin" label) means
+    // GitHub actually pinned it.
+    const visualPin = li.querySelector?.(
+      ".ActionListItem-visual--trailing .octicon-pin, .ActionListItem-visual--trailing .octicon-pin-slash"
+    );
+    if (
+      visualPin &&
+      !visualPin.closest?.(
+        ".ActionListItem-trailingAction, action-menu, details, [role='menu']"
+      )
+    ) {
+      return true;
+    }
+    const labelled = li.querySelectorAll?.("[aria-label]") || [];
+    for (const el of labelled) {
+      if (/unpin/i.test(el.getAttribute?.("aria-label") || "")) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Pinned workflows in GitHub's native order, capped at GitHub's max.
+   * Empty when the setting is off.
+   * @param {Array<{ pinned?: boolean }>} items
+   * @param {boolean} [showPinnedAtTop=true]
+   */
+  function selectPinnedItems(items, showPinnedAtTop = true) {
+    if (showPinnedAtTop === false) return [];
+    return (items || [])
+      .filter((item) => item.pinned)
+      .slice(0, MAX_PINNED_WORKFLOWS);
+  }
+
   function parseWorkflowElement(li) {
     const anchor = li.querySelector("a.ActionListContent, a[href*='/actions/']");
     const label = li.querySelector(SELECTORS.label);
@@ -64,6 +102,7 @@
       name,
       href: anchor?.getAttribute("href") || "",
       disabled: isDisabledElement(li),
+      pinned: isPinnedElement(li),
       element: li,
     };
   }
@@ -101,6 +140,7 @@
       }
       if (item.href) merged.href = item.href;
       merged.disabled = existing.disabled || item.disabled;
+      merged.pinned = Boolean(existing.pinned || item.pinned);
       byHref.set(key, merged);
     }
     return [...byHref.values()];
@@ -189,6 +229,7 @@
       }
       if (item.href) merged.href = item.href;
       merged.disabled = existing.disabled || item.disabled;
+      merged.pinned = Boolean(existing.pinned || item.pinned);
       byId.set(item.id, merged);
     };
 
@@ -257,9 +298,12 @@
 
   return {
     SELECTORS,
+    MAX_PINNED_WORKFLOWS,
     parseRepoFromLocation,
     isDisabledElement,
+    isPinnedElement,
     parseWorkflowElement,
+    selectPinnedItems,
     collectWorkflowItems,
     removeShowMoreControls,
     dedupeByHref,

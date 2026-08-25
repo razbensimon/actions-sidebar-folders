@@ -21,6 +21,13 @@
     </svg>
   `.trim();
 
+  /** Primer octicon-pin 16px — used when the original GitHub node is gone. */
+  const PIN_SVG = `
+    <svg class="octicon octicon-pin" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+      <path d="M4.456.734a1.75 1.75 0 0 1 2.826.504l.613 1.327a3.081 3.081 0 0 0 2.084 1.707l2.454.584c1.371.326 1.82 2.074.832 3.231l-1.95 2.28c-.438.513-.508 1.24-.183 1.823l.815 1.47a.75.75 0 0 1-1.5 2.596L.498 13.7a.75.75 0 0 1-.588-3.425l1.721-.654c.615-.234 1.02-.837 1.02-1.518V3.372A1.75 1.75 0 0 1 4.456.734Z" fill="currentColor"></path>
+    </svg>
+  `.trim();
+
   /** Management lives in its own ActionListWrap — never paint folders there. */
   function isManagementList(ul) {
     if (!ul || ul.nodeType !== 1) return false;
@@ -195,7 +202,35 @@
     if (item.name) li.setAttribute("data-asf-full-name", item.name);
     if (item.disabled) li.setAttribute("data-asf-disabled", "1");
     else li.removeAttribute("data-asf-disabled");
+    if (item.pinned) li.setAttribute("data-asf-pinned", "1");
+    else li.removeAttribute("data-asf-pinned");
+    ensurePinVisual(li, item.pinned);
     return li;
+  }
+
+  function ensurePinVisual(li, pinned) {
+    if (!pinned) return;
+    if (li.querySelector(".octicon-pin, .octicon-pin-slash")) return;
+    const content = li.querySelector("a.ActionListContent") || li;
+    const trailing = document.createElement("span");
+    trailing.className = "ActionListItem-visual ActionListItem-visual--trailing";
+    trailing.setAttribute("aria-hidden", "true");
+    trailing.innerHTML = PIN_SVG;
+    content.appendChild(trailing);
+  }
+
+  /**
+   * Independent copy of a leaf so a pinned workflow can sit at the top and
+   * still keep its original node inside the folder tree.
+   */
+  function cloneLeafElement(leaf) {
+    const source = ensureLeafElement(leaf);
+    const copy = source.cloneNode(true);
+    copy.removeAttribute("id");
+    copy.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    copy.setAttribute("data-asf-pinned", "1");
+    copy.setAttribute("data-asf-pinned-copy", "1");
+    return copy;
   }
 
   /**
@@ -375,7 +410,13 @@
     if (childList) childList.hidden = !open;
   }
 
-  function renderTree(nav, tree, settings, disabledFolderItems = []) {
+  function renderTree(
+    nav,
+    tree,
+    settings,
+    disabledFolderItems = [],
+    pinnedItems = []
+  ) {
     const listEl = findWorkflowList(nav);
     if (!listEl) return false;
 
@@ -383,6 +424,18 @@
     scrubMisplacedPaint(nav, listEl);
     clearWorkflowList(listEl);
     globalThis.ASF?.removeShowMoreControls?.(nav);
+
+    if (settings.showPinnedAtTop !== false) {
+      for (const item of pinnedItems) {
+        listEl.appendChild(
+          cloneLeafElement({
+            type: "leaf",
+            name: item.name,
+            item,
+          })
+        );
+      }
+    }
 
     const nodes = tree.slice();
     if (disabledFolderItems.length > 0) {

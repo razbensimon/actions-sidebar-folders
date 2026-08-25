@@ -13,6 +13,7 @@
     disabledMode: "hide", // hide | folder | flat
     collapseFoldersByDefault: true,
     groupDependabotWorkflows: true,
+    showPinnedAtTop: true,
     debugMode: false,
   });
 
@@ -30,6 +31,10 @@
         typeof stored.groupDependabotWorkflows === "boolean"
           ? stored.groupDependabotWorkflows
           : DEFAULTS.groupDependabotWorkflows,
+      showPinnedAtTop:
+        typeof stored.showPinnedAtTop === "boolean"
+          ? stored.showPinnedAtTop
+          : DEFAULTS.showPinnedAtTop,
       debugMode: Boolean(stored.debugMode),
     };
   }

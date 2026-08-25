@@ -5,6 +5,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     disabledMode: "hide",
     collapseFoldersByDefault: true,
     groupDependabotWorkflows: true,
+    showPinnedAtTop: true,
     debugMode: false,
   };
   const current = await chrome.storage.sync.get(defaults);
@@ -23,6 +24,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       typeof current.groupDependabotWorkflows === "boolean"
         ? current.groupDependabotWorkflows
         : defaults.groupDependabotWorkflows,
+    showPinnedAtTop:
+      typeof current.showPinnedAtTop === "boolean"
+        ? current.showPinnedAtTop
+        : defaults.showPinnedAtTop,
     debugMode:
       typeof current.debugMode === "boolean"
         ? current.debugMode
