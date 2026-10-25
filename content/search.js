@@ -18,6 +18,7 @@
   const FOLDER_OPEN = "asf-folder-group--open";
   const NEST_CLASS = "asf-folder-children";
   const ROOT_SELECTOR = "ul[data-asf-rooted]";
+  const LABEL_SELECTOR = ".asf-label, .ActionListItem-label";
 
   const SEARCH_ICON_SVG = `
     <svg class="asf-search-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
@@ -134,24 +135,20 @@
     const filtering = terms.length > 0;
 
     if (el.hasAttribute("data-asf-leaf")) {
+      const leafLabel = el.querySelector(LABEL_SELECTOR);
       const fullName =
-        el.getAttribute("data-asf-full-name") ||
-        el.querySelector(".ActionListItem-label")?.textContent ||
-        "";
+        el.getAttribute("data-asf-full-name") || leafLabel?.textContent || "";
       const visible =
         !filtering || forceShow || matchesTerms(fullName, terms);
       el.classList.toggle(HIDDEN_CLASS, !visible);
-      paintLabel(
-        el.querySelector(".ActionListItem-label"),
-        filtering && visible ? terms : []
-      );
+      paintLabel(leafLabel, filtering && visible ? terms : []);
       return visible ? 1 : 0;
     }
 
     if (!el.classList.contains(FOLDER_GROUP)) return 0;
 
     const label = el.querySelector(
-      ":scope > .asf-folder .ActionListItem-label"
+      ":scope > .asf-folder :is(.asf-label, .ActionListItem-label)"
     );
     const selfMatch =
       filtering && matchesTerms(label?.textContent || "", terms);

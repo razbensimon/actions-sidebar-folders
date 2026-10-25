@@ -12,11 +12,23 @@
   const READY_ATTR = "data-asf-ready";
   let timer = null;
   let failOpenTimer = null;
+  const REACT_GROUP = 'li[data-component="ActionList.Group"]';
   let rebuilding = false;
   let lastKey = "";
+  let lastHref = location.href;
 
   function onActionsPage() {
     return /\/actions(\/|$)/.test(location.pathname);
+  }
+
+  function isReact(nav) {
+    return Boolean(ASF.isReactNav?.(nav));
+  }
+
+  function isPainted(nav) {
+    if (!nav) return false;
+    if (isReact(nav)) return ASF.isReactPainted(nav);
+    return Boolean(nav.querySelector("." + ASF.FOLDER_CLASS));
   }
 
   function markPending(nav) {
@@ -124,7 +136,7 @@
 
   async function rebuild(reason) {
     if (rebuilding) return;
-    const nav = document.querySelector(ASF.SELECTORS.nav);
+    let nav = document.querySelector(ASF.SELECTORS.nav);
     if (!nav) {
       ASF.log?.("no Actions Workflows nav yet", reason);
       return;
@@ -135,6 +147,12 @@
     markPending(nav);
 
     try {
+      if (isReact(nav)) {
+        await ASF.whenReactReady(nav);
+        nav = document.querySelector(ASF.SELECTORS.nav);
+        if (!nav) return;
+      }
+
       const settings = await ASF.loadSettings();
       ASF.setDebugEnabled?.(settings.debugMode);
       ASF.updateDebug?.({
@@ -147,12 +165,14 @@
 
       const repo = ASF.parseRepoFromLocation?.();
       const cached = readCache(repo);
-      if (cached?.length && !nav.querySelector("." + ASF.FOLDER_CLASS)) {
+      if (cached?.length && !isPainted(nav)) {
         ASF.log?.("optimistic paint from cache", { items: cached.length });
         paint(nav, cached, settings);
       }
 
-      const items = await ASF.collectWorkflowItems(nav);
+      const items = isReact(nav)
+        ? await ASF.collectReactWorkflowItems(nav)
+        : await ASF.collectWorkflowItems(nav);
       if (!items.length) {
         ASF.warn?.("no workflow items collected");
         ASF.updateDebug?.({
@@ -182,7 +202,7 @@
         ids: items.map((i) => `${i.id}:${i.pinned ? "p" : ""}`).sort(),
       });
 
-      if (key === lastKey && nav.querySelector("." + ASF.FOLDER_CLASS)) {
+      if (key === lastKey && isPainted(nav)) {
         const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
         if (strays > 0) {
           ASF.log?.("pruned stray native rows", { strays });
@@ -252,8 +272,23 @@
     }
   }
 
+  /** React Router navigations fire no Turbo events; only the URL changes. */
+  function onLocationChange() {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    if (!onActionsPage()) return;
+    const nav = document.querySelector(ASF.SELECTORS.nav);
+    if (!nav || !isReact(nav)) return;
+    if (isPainted(nav)) {
+      ASF.applySelection?.(nav);
+    } else {
+      scheduleRebuild("location");
+    }
+  }
+
   function observe() {
     const observer = new MutationObserver((mutations) => {
+      onLocationChange();
       if (rebuilding) return;
       let sawWorkflowDom = false;
       for (const mutation of mutations) {
@@ -264,7 +299,9 @@
             node.querySelector?.(ASF.SELECTORS.nav) ||
             node.matches?.(ASF.SELECTORS.workflowItem) ||
             node.querySelector?.(ASF.SELECTORS.workflowItem) ||
-            node.matches?.("[data-target='nav-list-group.showMoreItem']")
+            node.matches?.("[data-target='nav-list-group.showMoreItem']") ||
+            node.matches?.(REACT_GROUP) ||
+            node.querySelector?.(REACT_GROUP)
           ) {
             sawWorkflowDom = true;
             break;
@@ -275,6 +312,15 @@
       if (!sawWorkflowDom) return;
 
       const nav = document.querySelector(ASF.SELECTORS.nav);
+      if (isReact(nav)) {
+        // React re-rendered the group (our tree went with it): repaint.
+        if (!isPainted(nav)) {
+          markPending(nav);
+          scheduleRebuild("mutation");
+        }
+        return;
+      }
+
       // Sync: hide via CSS is instant; also delete unmarked nodes so selection
       // / counts stay correct.
       const strays = ASF.pruneStrayNativeWorkflows?.(nav) || 0;
@@ -284,7 +330,7 @@
       }
 
       // If our tree was wiped, rebuild; if only strays were added, pruning is enough.
-      if (!nav?.querySelector("." + ASF.FOLDER_CLASS)) {
+      if (!isPainted(nav)) {
         markPending(nav);
         scheduleRebuild("mutation");
       } else if (ASF.hasStrayNativeWorkflows?.(nav)) {
@@ -310,6 +356,7 @@
       markPending();
     });
     window.addEventListener("popstate", () => onNav("popstate"));
+    globalThis.navigation?.addEventListener?.("navigatesuccess", onLocationChange);
   }
 
   function listenSettings() {

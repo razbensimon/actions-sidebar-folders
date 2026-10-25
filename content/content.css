@@ -1,14 +1,40 @@
 /* Always hide GitHub-native workflow rows we did not render.
    Our leaves are marked data-asf-leaf. This kills FOUC + duplicate strays
    even when Turbo keeps data-asf-ready on the same <nav>. */
-nav[aria-label="Actions Workflows"]
+nav[aria-label="Actions workflows" i]
   li[data-test-selector="workflow-rendered"]:not([data-asf-leaf]) {
   display: none !important;
 }
 
-nav[aria-label="Actions Workflows"] [data-target="nav-list-group.showMoreItem"],
-nav[aria-label="Actions Workflows"] [src*="workflows_partial"] {
+nav[aria-label="Actions workflows" i] [data-target="nav-list-group.showMoreItem"],
+nav[aria-label="Actions workflows" i] [src*="workflows_partial"] {
   display: none !important;
+}
+
+/* React sidebar: React owns the native list, so hide it (never remove it)
+   once our tree is painted next to it. */
+nav[aria-label="Actions workflows" i]
+  li[data-asf-react-group]
+  > ul:not([data-asf-rooted]) {
+  display: none !important;
+}
+
+/* Only used if no native row was available to copy Primer React classes from. */
+.asf-react-fallback-item {
+  list-style: none;
+}
+
+.asf-react-fallback-link {
+  display: flex;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--fgColor-default, var(--color-fg-default));
+  text-decoration: none;
+}
+
+.asf-react-trailing {
+  margin-left: auto;
+  padding-left: 8px;
 }
 
 /* Folder group: keep list-item display so Primer ActionList alignment stays intact.
@@ -85,7 +111,7 @@ nav[aria-label="Actions Workflows"] [src*="workflows_partial"] {
 }
 
 .asf-folder-children li.ActionListItem--navActive > .ActionListContent,
-nav[aria-label="Actions Workflows"]
+nav[aria-label="Actions workflows" i]
   li[data-test-selector="workflow-rendered"][data-asf-leaf].ActionListItem--navActive
   > .ActionListContent {
   font-weight: 600;

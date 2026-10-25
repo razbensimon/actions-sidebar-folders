@@ -14,6 +14,16 @@
   const NEST_CLASS = "asf-folder-children";
   const ROOT_MARK = "data-asf-rooted";
   const ACTIVE_CLASS = "ActionListItem--navActive";
+  /** Marks every label we own (folder + leaf) for search, in both sidebars. */
+  const LABEL_CLASS = "asf-label";
+
+  /** Primer CSS (Rails) classes used by the legacy sidebar. */
+  const LEGACY_CLASSES = Object.freeze({
+    folderHeader: "ActionListItem",
+    folderButton: "ActionListContent",
+    label: "ActionListItem-label",
+    nestList: "ActionListWrap",
+  });
 
   const CHEVRON_SVG = `
     <svg class="asf-folder-chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
@@ -168,7 +178,10 @@
 
   function setLeafLabel(li, displayName) {
     const label = li.querySelector(".ActionListItem-label");
-    if (label) label.textContent = displayName;
+    if (label) {
+      label.textContent = displayName;
+      label.classList.add(LABEL_CLASS);
+    }
   }
 
   function ensureLeafElement(leaf) {
@@ -313,6 +326,11 @@
   }
 
   function applySelection(nav) {
+    const ASF = globalThis.ASF;
+    if (ASF?.isReactNav?.(nav)) {
+      ASF.applyReactSelection(nav);
+      return;
+    }
     clearActiveStates(nav);
     let matched = false;
     nav
@@ -337,7 +355,16 @@
     }
   }
 
-  function createFolderElement(folder, settings) {
+  /**
+   * @param {object} folder
+   * @param {object} settings
+   * @param {{ classes?: object, makeLeaf?: (leaf: object) => Element }} [opts]
+   *   classes/makeLeaf let the React sidebar reuse this with Primer React markup.
+   */
+  function createFolderElement(folder, settings, opts = {}) {
+    const classes = opts.classes || LEGACY_CLASSES;
+    const makeLeaf = opts.makeLeaf || ensureLeafElement;
+
     // Wrapper is NOT ActionListItem — nesting ul inside ActionListItem breaks
     // Primer's active indicator / padding. Header row is a normal ActionListItem.
     const group = document.createElement("li");
@@ -346,12 +373,15 @@
     group.setAttribute("role", "presentation");
 
     const header = document.createElement("div");
-    header.className = `ActionListItem ${FOLDER_HEADER}`;
+    header.className = `${classes.folderHeader} ${FOLDER_HEADER}`;
 
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "ActionListContent asf-folder-toggle";
+    button.className = `${classes.folderButton} asf-folder-toggle`;
     button.setAttribute("aria-expanded", "false");
+    for (const [key, value] of Object.entries(classes.buttonAttrs || {})) {
+      button.setAttribute(key, value);
+    }
 
     const chevronWrap = document.createElement("span");
     chevronWrap.className = "asf-folder-chevron-wrap";
@@ -359,7 +389,7 @@
     chevronWrap.innerHTML = CHEVRON_SVG;
 
     const label = document.createElement("span");
-    label.className = "ActionListItem-label";
+    label.className = `${classes.label} ${LABEL_CLASS}`;
     label.textContent = folder.name;
 
     const count = document.createElement("span");
@@ -371,14 +401,14 @@
     group.appendChild(header);
 
     const childList = document.createElement("ul");
-    childList.className = `ActionListWrap ${NEST_CLASS}`;
+    childList.className = `${classes.nestList} ${NEST_CLASS}`;
     childList.hidden = true;
 
     for (const child of folder.children) {
       if (child.type === "folder") {
-        childList.appendChild(createFolderElement(child, settings));
+        childList.appendChild(createFolderElement(child, settings, opts));
       } else {
-        childList.appendChild(ensureLeafElement(child));
+        childList.appendChild(makeLeaf(child));
       }
     }
 
@@ -410,33 +440,8 @@
     if (childList) childList.hidden = !open;
   }
 
-  function renderTree(
-    nav,
-    tree,
-    settings,
-    disabledFolderItems = [],
-    pinnedItems = []
-  ) {
-    const listEl = findWorkflowList(nav);
-    if (!listEl) return false;
-
-    // Drop any prior paint that landed in Management (or elsewhere).
-    scrubMisplacedPaint(nav, listEl);
-    clearWorkflowList(listEl);
-    globalThis.ASF?.removeShowMoreControls?.(nav);
-
-    if (settings.showPinnedAtTop !== false) {
-      for (const item of pinnedItems) {
-        listEl.appendChild(
-          cloneLeafElement({
-            type: "leaf",
-            name: item.name,
-            item,
-          })
-        );
-      }
-    }
-
+  /** Top-level nodes in paint order: tree first, synthetic Disabled folder last. */
+  function orderTopLevel(tree, disabledFolderItems = []) {
     const nodes = tree.slice();
     if (disabledFolderItems.length > 0) {
       nodes.push({
@@ -461,16 +466,60 @@
     const rest = nodes.filter(
       (n) => !(n.type === "folder" && n.name === "Disabled")
     );
-    const ordered = [...rest, ...disabled];
+    return [...rest, ...disabled];
+  }
 
-    for (const node of ordered) {
+  function folderSettings(node, settings) {
+    return {
+      ...settings,
+      collapseFoldersByDefault:
+        node.name === "Disabled" ? true : settings.collapseFoldersByDefault,
+    };
+  }
+
+  function renderTree(
+    nav,
+    tree,
+    settings,
+    disabledFolderItems = [],
+    pinnedItems = []
+  ) {
+    const ASF = globalThis.ASF;
+    if (ASF?.isReactNav?.(nav)) {
+      return ASF.renderReactTree(
+        nav,
+        tree,
+        settings,
+        disabledFolderItems,
+        pinnedItems
+      );
+    }
+
+    const listEl = findWorkflowList(nav);
+    if (!listEl) return false;
+
+    // Drop any prior paint that landed in Management (or elsewhere).
+    scrubMisplacedPaint(nav, listEl);
+    clearWorkflowList(listEl);
+    globalThis.ASF?.removeShowMoreControls?.(nav);
+
+    if (settings.showPinnedAtTop !== false) {
+      for (const item of pinnedItems) {
+        listEl.appendChild(
+          cloneLeafElement({
+            type: "leaf",
+            name: item.name,
+            item,
+          })
+        );
+      }
+    }
+
+    for (const node of orderTopLevel(tree, disabledFolderItems)) {
       if (node.type === "folder") {
-        const folderEl = createFolderElement(node, {
-          ...settings,
-          collapseFoldersByDefault:
-            node.name === "Disabled" ? true : settings.collapseFoldersByDefault,
-        });
-        listEl.appendChild(folderEl);
+        listEl.appendChild(
+          createFolderElement(node, folderSettings(node, settings))
+        );
       } else {
         listEl.appendChild(ensureLeafElement(node));
       }
@@ -520,9 +569,15 @@
 
   return {
     FOLDER_CLASS,
+    LABEL_CLASS,
+    PIN_SVG,
     findWorkflowList,
     renderTree,
+    createFolderElement,
+    orderTopLevel,
+    folderSettings,
     setFolderOpen,
+    isActivePath,
     pathContainsActive,
     applySelection,
     pruneStrayNativeWorkflows,

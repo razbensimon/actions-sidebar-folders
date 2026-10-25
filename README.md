@@ -48,7 +48,10 @@ Max folder depth is fixed at **3**. Extra `/` segments stay on the leaf label (`
 
 ## How it works
 
-- Reads workflow rows from the Actions sidebar and GitHub’s same-origin `workflows_partial` HTML (your session cookies; **no PAT**)
+- Works with both Actions sidebars GitHub serves:
+  - **React sidebar** (Primer React `NavList`): reads the same-origin `_workflows` JSON GitHub's own "Show more" uses (falls back to `workflows_partial`), hides the native list with CSS, and paints the folder tree beside it. Leaf clicks go through the hidden native link, so navigation stays client-side.
+  - **Legacy sidebar**: reads workflow rows from the sidebar and GitHub’s `workflows_partial` HTML, and regroups them in place.
+- Uses your session cookies only (**no PAT**)
 - Splits names on `/` (whitespace around `/` is fine)
 - Optionally groups GitHub’s managed Dependabot Updates and Dependency Graph under a **Dependabot** folder (toggle in Options)
 - Duplicates GitHub-pinned workflows at the top of the list (like GitHub’s native sidebar) while leaving them in their folders (toggle in Options)

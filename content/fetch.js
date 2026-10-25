@@ -9,7 +9,8 @@
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const SELECTORS = {
-    nav: 'nav[aria-label="Actions Workflows"]',
+    // Legacy sidebar: "Actions Workflows"; React sidebar: "Actions workflows".
+    nav: 'nav[aria-label="Actions workflows" i]',
     workflowItem: 'li[data-test-selector="workflow-rendered"]',
     showMore: "[data-target='nav-list-group.showMoreItem']",
     label: ".ActionListItem-label",

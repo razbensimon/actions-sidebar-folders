@@ -44,7 +44,7 @@
     };
 
     const nav = document.querySelector(
-      globalThis.ASF?.SELECTORS?.nav || 'nav[aria-label="Actions Workflows"]'
+      globalThis.ASF?.SELECTORS?.nav || 'nav[aria-label="Actions workflows" i]'
     );
     if (nav) {
       if (state.enabled) {
