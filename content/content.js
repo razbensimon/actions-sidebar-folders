@@ -14,6 +14,7 @@
   let failOpenTimer = null;
   const REACT_GROUP = 'li[data-component="ActionList.Group"]';
   let rebuilding = false;
+  let queuedReason = null;
   let lastKey = "";
   let lastHref = location.href;
 
@@ -135,7 +136,10 @@
   }
 
   async function rebuild(reason) {
-    if (rebuilding) return;
+    if (rebuilding) {
+      queuedReason = reason;
+      return;
+    }
     let nav = document.querySelector(ASF.SELECTORS.nav);
     if (!nav) {
       ASF.log?.("no Actions Workflows nav yet", reason);
@@ -259,8 +263,21 @@
       }
     } finally {
       rebuilding = false;
+      if (queuedReason) {
+        // The finished run may have painted data older than the request.
+        const next = queuedReason;
+        queuedReason = null;
+        lastKey = "";
+        scheduleRebuild(next);
+      }
     }
   }
+
+  /** Force a full repaint (e.g. after a pin toggle changed GitHub's state). */
+  ASF.requestRebuild = (reason) => {
+    lastKey = "";
+    scheduleRebuild(reason);
+  };
 
   function publishApi() {
     ASF.publishDebug?.();

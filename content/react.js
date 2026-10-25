@@ -27,6 +27,42 @@
   /** Last sanitized native row; survives repaints once natives are hidden. */
   let rowTemplate = null;
   let expandingShowMore = false;
+  /** Next paint keeps each folder's open/closed state (repaints we trigger). */
+  let keepFolderState = false;
+
+  function requestRepaint(reason) {
+    keepFolderState = true;
+    globalThis.ASF.requestRebuild?.(reason);
+  }
+
+  function folderKey(group) {
+    const names = [];
+    for (let g = group; g; g = g.parentElement?.closest(".asf-folder-group")) {
+      names.unshift(g.getAttribute("data-asf-folder"));
+    }
+    return names.join("\u0000");
+  }
+
+  function readFolderStates(listEl) {
+    const states = new Map();
+    listEl.querySelectorAll(".asf-folder-group").forEach((g) => {
+      // While searching, folders are force-opened; keep the pre-search state.
+      const prev = g.getAttribute("data-asf-prev-open");
+      states.set(
+        folderKey(g),
+        prev !== null ? prev === "1" : g.classList.contains("asf-folder-group--open")
+      );
+    });
+    return states;
+  }
+
+  function restoreFolderStates(listEl, states) {
+    const setFolderOpen = globalThis.ASF.setFolderOpen;
+    listEl.querySelectorAll(".asf-folder-group").forEach((g) => {
+      const key = folderKey(g);
+      if (states.has(key)) setFolderOpen(g, states.get(key));
+    });
+  }
 
   function isReactNav(nav) {
     if (!nav || nav.nodeType !== 1) return false;
@@ -78,6 +114,28 @@
     return Boolean(findReactRoot(nav));
   }
 
+  /**
+   * GitHub's per-row pin toggle (ActionList.TrailingAction, outside the link).
+   * Only rendered when the viewer may pin and the workflow is active. Shows
+   * PinIcon when unpinned and PinSlashIcon when pinned.
+   */
+  function findPinButton(li) {
+    if (!li) return null;
+    return (
+      [...li.querySelectorAll("button")].find(
+        (b) =>
+          !b.closest("a") && b.querySelector(".octicon-pin, .octicon-pin-slash")
+      ) || null
+    );
+  }
+
+  /** Top-level child of the row that holds the pin button (the trailing action). */
+  function pinActionOf(li, button) {
+    let el = button;
+    while (el && el.parentElement !== li) el = el.parentElement;
+    return el || button;
+  }
+
   function parseReactRow(li) {
     const anchor = li.querySelector("a[href]");
     const name = (li.querySelector(NATIVE_LABEL)?.textContent || "").trim();
@@ -89,12 +147,15 @@
         trailing?.textContent ||
         ""
     );
-    const pinned =
-      Boolean(trailing?.querySelector(".octicon-pin")) ||
-      [...li.querySelectorAll("[aria-label]")].some((el) =>
-        /unpin/i.test(el.getAttribute("aria-label") || "")
-      );
-    return { id: href, name, href, disabled, pinned };
+    const pinButton = findPinButton(li);
+    return {
+      id: href,
+      name,
+      href,
+      disabled,
+      pinnable: Boolean(pinButton),
+      pinned: Boolean(pinButton?.querySelector(".octicon-pin-slash")),
+    };
   }
 
   /**
@@ -232,9 +293,10 @@
     const items = ASF.dedupeByHref(fetched).map((item) => {
       const { element, ...rest } = item;
       const seen = nativeByHref.get(rest.href);
-      rest.pinned = Boolean(
-        rest.pinned || pinnedIds.has(String(rest.id)) || seen?.pinned
-      );
+      // Embedded pinned ids go stale after a pin toggle; a live pin button doesn't.
+      rest.pinned = seen?.pinnable
+        ? seen.pinned
+        : Boolean(rest.pinned || pinnedIds.has(String(rest.id)));
       rest.disabled = Boolean(rest.disabled || seen?.disabled);
       return rest;
     });
@@ -343,8 +405,32 @@
     );
   }
 
+  /** Inert copy of GitHub's pin toggle; clicks are forwarded to the native one. */
+  function clonePinAction(row, button, item) {
+    const copy = pinActionOf(row, button).cloneNode(true);
+    copy
+      .querySelectorAll("[popover], [role='tooltip']")
+      .forEach((el) => el.remove());
+    for (const el of [copy, ...copy.querySelectorAll("*")]) {
+      el.removeAttribute("id");
+      el.removeAttribute("aria-labelledby");
+      el.removeAttribute("aria-describedby");
+      el.removeAttribute("data-cursor-ref");
+    }
+    const toggle = copy.matches("button") ? copy : copy.querySelector("button");
+    if (!toggle) return null;
+    const label = `${item.pinned ? "Unpin" : "Pin"} ${item.name}`;
+    toggle.setAttribute("aria-label", label);
+    toggle.setAttribute("title", label);
+    toggle.setAttribute("data-asf-pin-toggle", "1");
+    return copy;
+  }
+
   function makeReactLeaf(leaf, ctx) {
     const item = leaf.item;
+    const nativeRow = ctx.nativeByHref.get(item.href);
+    const nativePin = nativeRow ? findPinButton(nativeRow) : null;
+    const pinAction = nativePin ? clonePinAction(nativeRow, nativePin, item) : null;
     const li = ctx.template ? ctx.template.cloneNode(true) : fallbackRow();
     const anchor = li.querySelector("a");
     anchor.setAttribute("href", item.href || "#");
@@ -359,7 +445,9 @@
     if (item.disabled) li.setAttribute("data-asf-disabled", "1");
     if (item.pinned) li.setAttribute("data-asf-pinned", "1");
 
-    if (item.disabled || item.pinned) {
+    // GitHub's own toggle already shows pin state; only draw ours without it.
+    const showPinVisual = item.pinned && !pinAction;
+    if (item.disabled || showPinVisual) {
       const trailing = document.createElement("span");
       trailing.className = ctx.trailingClass;
       trailing.setAttribute("data-component", "ActionList.TrailingVisual");
@@ -369,26 +457,71 @@
         text.textContent = "Disabled";
         trailing.appendChild(text);
       }
-      if (item.pinned) {
+      if (showPinVisual) {
         trailing.insertAdjacentHTML("beforeend", globalThis.ASF.PIN_SVG);
       }
       (li.querySelector(NATIVE_SUBCONTENT) || anchor).appendChild(trailing);
     }
+    if (pinAction) li.appendChild(pinAction);
     return li;
   }
 
-  function findNativeAnchor(group, href) {
-    const list = nativeListOf(group);
-    if (!list || !href) return null;
+  function nativeRowByHref(group, href) {
+    if (!href) return null;
     return (
-      [...list.querySelectorAll("a[href]")].find(
-        (a) => a.getAttribute("href") === href
+      nativeRows(group).find(
+        (li) => li.querySelector("a[href]")?.getAttribute("href") === href
       ) || null
     );
   }
 
+  function findNativeAnchor(group, href) {
+    return nativeRowByHref(group, href)?.querySelector("a[href]") || null;
+  }
+
+  function nativePinState(group, href) {
+    const button = findPinButton(nativeRowByHref(group, href));
+    if (!button) return null;
+    return Boolean(button.querySelector(".octicon-pin-slash"));
+  }
+
+  /**
+   * Forward a pin toggle to GitHub's hidden native button (React does the API
+   * call and refreshes its list), then repaint once its state has flipped.
+   */
+  async function togglePin(group, toggle) {
+    if (toggle.disabled) return;
+    const href = toggle
+      .closest("[data-asf-leaf]")
+      ?.querySelector("a[href]")
+      ?.getAttribute("href");
+    const nativeButton = findPinButton(nativeRowByHref(group, href));
+    if (!nativeButton) return;
+    const wasPinned = nativePinState(group, href);
+    toggle.disabled = true;
+    toggle.setAttribute("aria-busy", "true");
+    nativeButton.click();
+    const flipped = await waitFor(() => {
+      const state = nativePinState(group, href);
+      return state !== null && state !== wasPinned;
+    }, 10000);
+    if (!flipped) globalThis.ASF.warn?.("pin toggle not confirmed", href);
+    // GitHub may have reset its list to page 1; repaint either way.
+    requestRepaint("pin");
+  }
+
   /** Route leaf clicks through the hidden native link so React Router navigates. */
   function onRootClick(event) {
+    const root = event.currentTarget;
+    const toggle = event.target.closest?.("[data-asf-pin-toggle]");
+    if (toggle && root.contains(toggle)) {
+      event.preventDefault();
+      event.stopPropagation();
+      togglePin(root.parentElement, toggle).catch((err) =>
+        globalThis.ASF.warn?.("pin toggle failed", err)
+      );
+      return;
+    }
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -399,7 +532,6 @@
     ) {
       return;
     }
-    const root = event.currentTarget;
     const anchor = event.target.closest?.("a[href]");
     if (!anchor || !root.contains(anchor)) return;
     const native = findNativeAnchor(root.parentElement, anchor.getAttribute("href"));
@@ -432,11 +564,12 @@
 
   /**
    * Load every native page in the background so each of our leaves has a
-   * hidden native link to click (client-side navigation).
+   * hidden native link (client-side navigation) and pin toggle to forward to.
    */
   async function expandNativeShowMore(group) {
     if (expandingShowMore) return;
     expandingShowMore = true;
+    const initialRows = nativeRows(group).length;
     try {
       for (let i = 0; i < SHOW_MORE_MAX_CLICKS; i++) {
         const button = findShowMoreButton(group);
@@ -454,6 +587,10 @@
       }
     } finally {
       expandingShowMore = false;
+      // Newly loaded rows carry pin toggles our leaves don't have yet.
+      if (group.isConnected && nativeRows(group).length > initialRows) {
+        requestRepaint("show-more");
+      }
     }
   }
 
@@ -496,7 +633,13 @@
     if (!group || !nativeList) return false;
 
     const template = captureTemplate(group);
-    const ctx = { template, trailingClass: trailingClassName(nav) };
+    const nativeByHref = new Map(
+      nativeRows(group).map((li) => [
+        li.querySelector("a[href]")?.getAttribute("href"),
+        li,
+      ])
+    );
+    const ctx = { template, nativeByHref, trailingClass: trailingClassName(nav) };
     const makeLeaf = (leaf) => makeReactLeaf(leaf, ctx);
     const opts = { classes: reactClasses(group, template), makeLeaf };
 
@@ -510,6 +653,8 @@
     listEl.className = nativeList.className;
     const labelledBy = nativeList.getAttribute("aria-labelledby");
     if (labelledBy) listEl.setAttribute("aria-labelledby", labelledBy);
+    const folderStates = keepFolderState ? readFolderStates(listEl) : null;
+    keepFolderState = false;
     listEl.replaceChildren();
 
     if (settings.showPinnedAtTop !== false) {
@@ -528,6 +673,7 @@
       );
     }
 
+    if (folderStates) restoreFolderStates(listEl, folderStates);
     group.setAttribute(GROUP_MARK, "1");
     applyReactSelection(nav);
     ASF.ensureSearchBox?.(nav, listEl);
