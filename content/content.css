@@ -13,9 +13,7 @@ nav[aria-label="Actions workflows" i] [src*="workflows_partial"] {
 
 /* React sidebar: React owns the native list, so hide it (never remove it)
    once our tree is painted next to it. */
-nav[aria-label="Actions workflows" i]
-  li[data-asf-react-group]
-  > ul:not([data-asf-rooted]) {
+[data-asf-native-list] {
   display: none !important;
 }
 

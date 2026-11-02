@@ -17,7 +17,7 @@
   const FOLDER_GROUP = "asf-folder-group";
   const FOLDER_OPEN = "asf-folder-group--open";
   const NEST_CLASS = "asf-folder-children";
-  const ROOT_SELECTOR = "ul[data-asf-rooted]";
+  const ROOT_SELECTOR = "[data-asf-rooted]";
   const LABEL_SELECTOR = ".asf-label, .ActionListItem-label";
 
   const SEARCH_ICON_SVG = `

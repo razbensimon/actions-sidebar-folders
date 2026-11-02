@@ -12,7 +12,7 @@
   const READY_ATTR = "data-asf-ready";
   let timer = null;
   let failOpenTimer = null;
-  const REACT_GROUP = 'li[data-component="ActionList.Group"]';
+  const WORKFLOW_LINK = 'a[href*="/actions/workflows/"]';
   let rebuilding = false;
   let queuedReason = null;
   let lastKey = "";
@@ -317,8 +317,8 @@
             node.matches?.(ASF.SELECTORS.workflowItem) ||
             node.querySelector?.(ASF.SELECTORS.workflowItem) ||
             node.matches?.("[data-target='nav-list-group.showMoreItem']") ||
-            node.matches?.(REACT_GROUP) ||
-            node.querySelector?.(REACT_GROUP)
+            node.matches?.(WORKFLOW_LINK) ||
+            node.querySelector?.(WORKFLOW_LINK)
           ) {
             sawWorkflowDom = true;
             break;
@@ -330,8 +330,11 @@
 
       const nav = document.querySelector(ASF.SELECTORS.nav);
       if (isReact(nav)) {
-        // React re-rendered the group (our tree went with it): repaint.
-        if (!isPainted(nav)) {
+        if (isPainted(nav)) {
+          // React may have swapped its list node; keep it hidden.
+          ASF.syncReactNative?.(nav);
+        } else {
+          // React re-rendered the section (our tree went with it): repaint.
           markPending(nav);
           scheduleRebuild("mutation");
         }
